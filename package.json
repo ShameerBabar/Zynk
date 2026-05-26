@@ -1,0 +1,12 @@
+{
+  "name": "zynk-workspace",
+  "version": "1.0.0",
+  "description": "Zynk - Modern Messaging App Root Workspace",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "cd server && node server.js",
+    "install-server": "cd server && npm install",
+    "postinstall": "npm run install-server"
+  },
+  "dependencies": {}
+}
