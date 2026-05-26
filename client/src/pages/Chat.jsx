@@ -135,7 +135,7 @@ export default function Chat() {
                 <path d="M12 2C6.48 2 2 6.03 2 11c0 2.84 1.5 5.37 3.82 7.03-.23 1.63-1.04 3.12-1.08 3.2-.08.17-.03.38.11.49.14.12.35.13.51.04 2.15-1.2 3.73-2.02 4.67-2.31C10.63 19.8 11.3 20 12 20c5.52 20 10-4.03 10-9s-4.48-9-10-9z"/>
               </svg>
             </div>
-            <h2 style={{ fontWeight: 400, color: 'var(--text-primary)', marginBottom: '10px' }}>Zynk Desktop</h2>
+            <h2 style={{ fontWeight: 400, color: 'var(--text-primary)', marginBottom: '10px' }}>Zynk</h2>
             <p style={{ color: 'var(--text-secondary)' }}>Send and receive messages without keeping your phone online.</p>
           </div>
         )}
