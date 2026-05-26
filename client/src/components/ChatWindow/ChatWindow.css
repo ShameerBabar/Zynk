@@ -1,0 +1,83 @@
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-chat);
+  position: relative;
+}
+
+.chat-window::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: var(--chat-pattern);
+  opacity: 0.06;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.chat-header {
+  height: var(--header-height);
+  background: var(--bg-sidebar);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  z-index: 10;
+}
+
+.messages-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 5%;
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+
+.date-separator {
+  display: flex;
+  justify-content: center;
+  margin: 15px 0;
+}
+
+.date-separator span {
+  background: var(--bg-modal);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  padding: 5px 12px;
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Custom Wallpapers */
+[data-wallpaper='teal'] .chat-window {
+  background: #080f14 !important;
+}
+[data-wallpaper='blue'] .chat-window {
+  background: #08111e !important;
+}
+[data-wallpaper='green'] .chat-window {
+  background: #08140e !important;
+}
+[data-wallpaper='charcoal'] .chat-window {
+  background: #121212 !important;
+}
+
+/* Light Theme Wallpapers */
+[data-theme='light'][data-wallpaper='teal'] .chat-window {
+  background: #e6f3f0 !important;
+}
+[data-theme='light'][data-wallpaper='blue'] .chat-window {
+  background: #e6eef8 !important;
+}
+[data-theme='light'][data-wallpaper='green'] .chat-window {
+  background: #e6f3e9 !important;
+}
+[data-theme='light'][data-wallpaper='charcoal'] .chat-window {
+  background: #f0f0f0 !important;
+}
