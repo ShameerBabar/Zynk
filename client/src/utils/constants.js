@@ -5,7 +5,7 @@ export const SOCKET_URL = envUrl
   ? envUrl 
   : (isDev 
       ? 'http://localhost:3001' 
-      : 'https://zynk-server.onrender.com');
+      : 'https://shameer123-zynk-backend.hf.space');
 
 export const API_BASE = `${SOCKET_URL}/api`;
 export const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB

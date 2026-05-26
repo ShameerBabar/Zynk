@@ -105,7 +105,7 @@ export default function Chat() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+    <div className={`chat-layout ${selectedConversation ? 'has-selected-chat' : ''}`}>
       <Sidebar 
         conversations={conversations} 
         selectedId={selectedConversation?.id} 
@@ -117,7 +117,7 @@ export default function Chat() {
         onNewChat={startPrivateChat}
       />
       
-      <div style={{ flex: 1, position: 'relative', display: 'flex' }}>
+      <div className="chat-window-container">
         {selectedConversation ? (
           <ChatWindow 
             conversation={selectedConversation} 

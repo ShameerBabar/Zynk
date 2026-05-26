@@ -49,10 +49,7 @@ export default function NewChatPanel({ onClose, onSelectUser }) {
   const notOnZynk = contacts.filter(c => !c.is_on_zynk);
 
   return (
-    <div style={{
-      position: 'absolute', top: 0, left: 0, width: 'var(--sidebar-width)', height: '100%',
-      background: 'var(--bg-sidebar)', zIndex: 100, display: 'flex', flexDirection: 'column'
-    }} className="slide-in-left">
+    <div className="sidebar-panel slide-in-left">
       <div style={{ height: 'var(--header-height)', display: 'flex', alignItems: 'center', padding: '0 16px', background: 'var(--bg-active)' }}>
         <button onClick={onClose} style={{ marginRight: '16px', color: 'var(--text-primary)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
           <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>

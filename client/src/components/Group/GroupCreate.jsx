@@ -56,7 +56,7 @@ export default function GroupCreate({ onClose, onSuccess }) {
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(11, 20, 26, 0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
-      <div style={{ background: 'var(--bg-modal)', padding: '20px', borderRadius: 'var(--radius-lg)', width: '400px', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '90vh' }}>
+      <div style={{ background: 'var(--bg-modal)', padding: '20px', borderRadius: 'var(--radius-lg)', width: '90%', maxWidth: '400px', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '90vh' }}>
         <h2 style={{ margin: 0, fontWeight: 500 }}>Create New Group</h2>
         
         <div>
