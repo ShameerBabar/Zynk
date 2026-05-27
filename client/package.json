@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "vite build --mode electron && electron-builder"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.1.2",
