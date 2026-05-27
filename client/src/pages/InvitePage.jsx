@@ -50,8 +50,8 @@ export default function InvitePage() {
       const data = await post(`/messages/conversations/private/${invitedUser.id}`);
       const conversation = data.conversation;
 
-      // Navigate home and pass the conversation in state to select it automatically
-      navigate('/', { state: { selectConversation: conversation } });
+      // Navigate home, insert the conversation in the sidebar, but do not open it automatically
+      navigate('/', { state: { selectConversation: conversation, autoSelect: false } });
     } catch(err) {
       console.error('Failed to start chat:', err);
       showToast(err.message || 'Failed to start chat', 'error');

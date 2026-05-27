@@ -31,9 +31,12 @@ export default function Chat() {
   useEffect(() => {
     if (location.state?.selectConversation) {
       const conv = location.state.selectConversation;
+      const autoSelect = location.state.autoSelect !== false;
       
-      // Select the conversation
-      setSelectedConversation(conv);
+      if (autoSelect) {
+        // Select the conversation
+        setSelectedConversation(conv);
+      }
       
       // Add to sidebar list if not present
       setConversations(prev => {
