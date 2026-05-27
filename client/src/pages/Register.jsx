@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { showToast } from '../components/Common/Toast';
 import './Login.css';
@@ -16,6 +16,8 @@ export default function Register() {
   const [error, setError] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || '/';
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -68,7 +70,7 @@ export default function Register() {
         password: formData.password
       });
       showToast('Account created successfully', 'success');
-      navigate('/');
+      navigate(from);
     } catch (err) {
       setError(err.message || 'Registration failed');
       showToast(err.message || 'Registration failed', 'error');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { showToast } from '../components/Common/Toast';
 import './Login.css';
@@ -12,6 +12,8 @@ export default function Login() {
   const [error, setError] = useState('');
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || '/';
   const googleBtnRef = useRef(null);
 
   const handleGoogleLoginSuccess = async (response) => {
@@ -20,7 +22,7 @@ export default function Login() {
     try {
       await loginWithGoogle(response.credential);
       showToast('Logged in with Google successfully', 'success');
-      navigate('/');
+      navigate(from);
     } catch (err) {
       setError(err.message || 'Google login failed');
       showToast(err.message || 'Google login failed', 'error');
@@ -64,7 +66,7 @@ export default function Login() {
     try {
       await login(identifier, password);
       showToast('Logged in successfully', 'success');
-      navigate('/');
+      navigate(from);
     } catch (err) {
       setError(err.message || 'Failed to login');
       showToast(err.message || 'Failed to login', 'error');

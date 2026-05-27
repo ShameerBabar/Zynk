@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { get, post } from '../utils/api';
 import Sidebar from '../components/Sidebar/Sidebar';
 import ChatWindow from '../components/ChatWindow/ChatWindow';
@@ -19,9 +20,29 @@ export default function Chat() {
   const [showInvitePanel, setShowInvitePanel] = useState(false);
   const [activeCallData, setActiveCallData] = useState(null);
 
+  const location = useLocation();
+
   useEffect(() => {
     fetchConversations();
   }, []);
+
+  useEffect(() => {
+    if (location.state?.selectConversation) {
+      const conv = location.state.selectConversation;
+      
+      // Select the conversation
+      setSelectedConversation(conv);
+      
+      // Add to sidebar list if not present
+      setConversations(prev => {
+        if (prev.some(c => c.id === conv.id)) return prev;
+        return [conv, ...prev];
+      });
+
+      // Clear the navigation state so page refreshes don't override future selections
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (!socket) return;

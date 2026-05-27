@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { post } from '../utils/api';
 import { API_BASE, getFileUrl } from '../utils/constants';
+import { showToast } from '../components/Common/Toast';
 
 export default function InvitePage() {
   const { username } = useParams();
@@ -34,15 +35,27 @@ export default function InvitePage() {
 
   const handleStartChat = async () => {
     if (!user) {
-      navigate('/login');
+      navigate('/login', { state: { from: `/invite/${username}` } });
       return;
     }
     try {
-      await post(`/contacts/${invitedUser.id}`);
+      // Add contact
+      try {
+        await post(`/contacts/${invitedUser.id}`);
+      } catch (err) {
+        // ignore if already contact
+      }
+
+      // Get or create conversation record
+      const data = await post(`/messages/conversations/private/${invitedUser.id}`);
+      const conversation = data.conversation;
+
+      // Navigate home and pass the conversation in state to select it automatically
+      navigate('/', { state: { selectConversation: conversation } });
     } catch(err) {
-      // ignore if already contact
+      console.error('Failed to start chat:', err);
+      showToast(err.message || 'Failed to start chat', 'error');
     }
-    navigate('/');
   };
 
   if (loading || authLoading) return <div className="flex-center" style={{height: '100vh', color: 'white'}}>Loading...</div>;
