@@ -5,7 +5,7 @@ import { showToast } from '../Common/Toast';
 
 export default function InvitePanel({ onClose }) {
   const { user } = useAuth();
-  const inviteUrl = `http://localhost:5173/invite/${user?.username}`;
+  const inviteUrl = `${window.location.origin}/invite/${user?.username}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(inviteUrl);
