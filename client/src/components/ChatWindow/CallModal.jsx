@@ -20,6 +20,9 @@ export default function CallModal({ callData, onCallEnd }) {
   const [callDuration, setCallDuration] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
   
+  const [localStream, setLocalStream] = useState(null);
+  const [remoteStream, setRemoteStream] = useState(null);
+  
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   
@@ -27,6 +30,7 @@ export default function CallModal({ callData, onCallEnd }) {
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
   const durationIntervalRef = useRef(null);
+  const pendingCandidatesRef = useRef([]);
 
   // Get other user's info
   const otherUserName = callData.otherUser?.display_name || callData.otherUser?.username || 'Zynk User';
@@ -36,9 +40,7 @@ export default function CallModal({ callData, onCallEnd }) {
   const initCall = async (stream) => {
     try {
       localStreamRef.current = stream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
+      setLocalStream(stream);
       
       const pc = new RTCPeerConnection({ iceServers });
       peerConnectionRef.current = pc;
@@ -50,11 +52,17 @@ export default function CallModal({ callData, onCallEnd }) {
       
       // Listen for remote tracks
       pc.ontrack = (event) => {
-        const [remoteStream] = event.streams;
-        remoteStreamRef.current = remoteStream;
-        if (remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteStream;
+        let rStream = event.streams[0];
+        if (!rStream) {
+          if (!remoteStreamRef.current) {
+            remoteStreamRef.current = new MediaStream();
+          }
+          remoteStreamRef.current.addTrack(event.track);
+          rStream = remoteStreamRef.current;
+        } else {
+          remoteStreamRef.current = rStream;
         }
+        setRemoteStream(rStream);
         setCallState('connected');
       };
       
@@ -124,6 +132,16 @@ export default function CallModal({ callData, onCallEnd }) {
       
       await pc.setRemoteDescription(new RTCSessionDescription(callData.signalData));
       
+      // Process pending candidates
+      if (pendingCandidatesRef.current.length > 0) {
+        for (const candidate of pendingCandidatesRef.current) {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(err => {
+            console.error('Error adding queued ICE candidate:', err);
+          });
+        }
+        pendingCandidatesRef.current = [];
+      }
+      
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       
@@ -162,6 +180,9 @@ export default function CallModal({ callData, onCallEnd }) {
     localStreamRef.current = null;
     remoteStreamRef.current = null;
     peerConnectionRef.current = null;
+    setLocalStream(null);
+    setRemoteStream(null);
+    pendingCandidatesRef.current = [];
   };
 
   // Socket Signaling Listeners
@@ -173,6 +194,16 @@ export default function CallModal({ callData, onCallEnd }) {
         if (peerConnectionRef.current) {
           await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(signalData));
           setCallState('connected');
+
+          // Process pending candidates
+          if (pendingCandidatesRef.current.length > 0) {
+            for (const candidate of pendingCandidatesRef.current) {
+              await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(err => {
+                console.error('Error adding queued ICE candidate:', err);
+              });
+            }
+            pendingCandidatesRef.current = [];
+          }
         }
       } catch (err) {
         console.error('Error accepting call answer:', err);
@@ -193,8 +224,11 @@ export default function CallModal({ callData, onCallEnd }) {
 
     socket.on('ice_candidate', async ({ candidate }) => {
       try {
-        if (peerConnectionRef.current) {
-          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        const pc = peerConnectionRef.current;
+        if (pc && pc.remoteDescription) {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } else {
+          pendingCandidatesRef.current.push(candidate);
         }
       } catch (err) {
         console.error('Error adding ICE candidate:', err);
@@ -215,19 +249,35 @@ export default function CallModal({ callData, onCallEnd }) {
     };
   }, [socket]);
 
-  // Duration Timer
+  // Call duration timer
   useEffect(() => {
     if (callState === 'connected') {
-      durationIntervalRef.current = setInterval(() => {
+      const interval = setInterval(() => {
         setCallDuration(prev => prev + 1);
       }, 1000);
+      durationIntervalRef.current = interval;
+      return () => {
+        clearInterval(interval);
+        durationIntervalRef.current = null;
+      };
     } else {
-      if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
+      setCallDuration(0);
     }
-    return () => {
-      if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
-    };
   }, [callState]);
+
+  // Bind remote stream to media element
+  useEffect(() => {
+    if (callState === 'connected' && remoteStream && remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [callState, remoteStream]);
+
+  // Bind local stream to video element
+  useEffect(() => {
+    if (callState === 'connected' && localStream && localVideoRef.current && callData.type === 'video' && !isVideoOff) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [callState, localStream, isVideoOff]);
 
   // Toggle Mute Audio
   const toggleMute = () => {
@@ -365,6 +415,16 @@ export default function CallModal({ callData, onCallEnd }) {
               autoPlay 
               playsInline 
               style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }}
+            />
+          )}
+
+          {/* Remote Audio Stream (Voice Call - Hidden, but kept in layout to avoid browser power suspension) */}
+          {callData.type === 'voice' && (
+            <audio 
+              ref={remoteVideoRef} 
+              autoPlay 
+              playsInline 
+              style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
             />
           )}
 

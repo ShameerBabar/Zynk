@@ -123,9 +123,29 @@ function setupSocketHandlers(io, db) {
 
     socket.on('message_read', ({ messageId, conversationId }) => {
       try {
-        const insertStmt = db.prepare(`INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)`);
-        insertStmt.run(messageId, userId);
-        io.to(conversationId).emit('message_read', { messageId, conversationId, userId });
+        if (messageId) {
+          const insertStmt = db.prepare(`INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)`);
+          insertStmt.run(messageId, userId);
+          io.to(conversationId).emit('message_read', { messageId, conversationId, userId });
+        } else if (conversationId) {
+          // Mark all messages in conversation as read (sent by others, not already read by current user)
+          const unreadMessages = db.prepare(`
+            SELECT id FROM messages 
+            WHERE conversation_id = ? 
+              AND sender_id != ? 
+              AND is_deleted = 0
+              AND id NOT IN (SELECT message_id FROM message_reads WHERE user_id = ?)
+          `).all(conversationId, userId, userId);
+
+          const insertStmt = db.prepare(`INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)`);
+          db.transaction(() => {
+            for (const msg of unreadMessages) {
+              insertStmt.run(msg.id, userId);
+            }
+          })();
+
+          io.to(conversationId).emit('conversation_read', { conversationId, userId });
+        }
       } catch (err) {
         console.error('Error marking read:', err);
       }
