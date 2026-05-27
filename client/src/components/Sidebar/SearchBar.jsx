@@ -15,7 +15,7 @@ export default function SearchBar({ onSelectUser }) {
     const timer = setTimeout(async () => {
       try {
         const data = await get(`/users/search?q=${query}`);
-        setResults(data);
+        setResults(data.users || data || []);
       } catch (err) {
         console.error(err);
       }
@@ -59,7 +59,7 @@ export default function SearchBar({ onSelectUser }) {
               className="hover-bg"
             >
               <div className="user-avatar-mini" style={{ marginRight: '10px' }}>
-                {user.avatar_url ? <img src={getFileUrl(user.avatar_url)} /> : <div className="avatar-placeholder">{user.display_name[0]}</div>}
+                {user.avatar_url ? <img src={getFileUrl(user.avatar_url)} /> : <div className="avatar-placeholder">{(user.display_name?.[0] || user.username?.[0] || '?').toUpperCase()}</div>}
               </div>
               <div>
                 <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{user.display_name}</div>

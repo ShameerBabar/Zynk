@@ -35,7 +35,7 @@ export default function NewChatPanel({ onClose, onSelectUser }) {
       setIsSearching(true);
       try {
         const data = await get(`/users/search?q=${searchQuery}`);
-        setSearchResults(data);
+        setSearchResults(data.users || data || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -79,7 +79,7 @@ export default function NewChatPanel({ onClose, onSelectUser }) {
                   style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px', cursor: 'pointer', borderBottom: '1px solid var(--border-color)' }}
                 >
                   <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
-                    {user.avatar_url ? <img src={getFileUrl(user.avatar_url)} style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : (user.display_name[0] || '?').toUpperCase()}
+                    {user.avatar_url ? <img src={getFileUrl(user.avatar_url)} style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : (user.display_name?.[0] || user.username?.[0] || '?').toUpperCase()}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ color: 'var(--text-primary)', fontSize: '15px' }}>{user.display_name} <span style={{color: 'var(--text-secondary)', fontSize: '13px'}}>@{user.username}</span></div>
