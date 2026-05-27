@@ -6,26 +6,27 @@ import { showToast } from '../Common/Toast';
 
 const iceServers = [
   { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' }
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
 ];
 
 export default function CallModal({ callData, onCallEnd }) {
   const { user: currentUser } = useAuth();
   const { socket } = useSocketContext();
-  
+
   // Call States: 'ringing' | 'incoming' | 'connected' | 'error'
   const [callState, setCallState] = useState(callData.incoming ? 'incoming' : 'ringing');
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(callData.type === 'voice');
   const [callDuration, setCallDuration] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
-  
-  const [localStream, setLocalStream] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
-  
+
+  // Always-mounted media element refs (never conditionally rendered)
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
-  
+  const remoteAudioRef = useRef(null);
+
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
@@ -36,23 +37,27 @@ export default function CallModal({ callData, onCallEnd }) {
   const otherUserName = callData.otherUser?.display_name || callData.otherUser?.username || 'Zynk User';
   const otherUserAvatar = getFileUrl(callData.otherUser?.avatar_url);
 
-  // Initialize Media and Peer Connection
+  // Initialize Peer Connection after media is obtained
   const initCall = async (stream) => {
     try {
       localStreamRef.current = stream;
-      setLocalStream(stream);
-      
+
+      // Bind local stream immediately if video element exists
+      if (localVideoRef.current && callData.type === 'video') {
+        localVideoRef.current.srcObject = stream;
+      }
+
       const pc = new RTCPeerConnection({ iceServers });
       peerConnectionRef.current = pc;
-      
+
       // Add local tracks to WebRTC
       stream.getTracks().forEach(track => {
         pc.addTrack(track, stream);
       });
-      
-      // Listen for remote tracks
+
+      // Listen for remote tracks — attach DIRECTLY to media element here
       pc.ontrack = (event) => {
-        let rStream = event.streams[0];
+        let rStream = event.streams && event.streams[0];
         if (!rStream) {
           if (!remoteStreamRef.current) {
             remoteStreamRef.current = new MediaStream();
@@ -62,10 +67,17 @@ export default function CallModal({ callData, onCallEnd }) {
         } else {
           remoteStreamRef.current = rStream;
         }
-        setRemoteStream(rStream);
+
+        // Attach directly — refs are always mounted since elements are always rendered
+        if (callData.type === 'video' && remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = rStream;
+        } else if (callData.type === 'voice' && remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = rStream;
+        }
+
         setCallState('connected');
       };
-      
+
       // Send ICE candidates to other user
       pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -75,7 +87,15 @@ export default function CallModal({ callData, onCallEnd }) {
           });
         }
       };
-      
+
+      pc.onconnectionstatechange = () => {
+        console.log('[WebRTC] Connection state:', pc.connectionState);
+        if (pc.connectionState === 'failed') {
+          setCallState('error');
+          setErrorMessage('Connection failed. Please check your network and try again.');
+        }
+      };
+
       return pc;
     } catch (err) {
       console.error('Failed to initialize connection:', err);
@@ -87,8 +107,12 @@ export default function CallModal({ callData, onCallEnd }) {
   const getMedia = async (videoRequired) => {
     try {
       const constraints = {
-        audio: true,
-        video: videoRequired
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100,
+        },
+        video: videoRequired ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false
       };
       return await navigator.mediaDevices.getUserMedia(constraints);
     } catch (err) {
@@ -109,10 +133,13 @@ export default function CallModal({ callData, onCallEnd }) {
       const stream = await getMedia(callData.type === 'video');
       const pc = await initCall(stream);
       if (!pc) return;
-      
-      const offer = await pc.createOffer();
+
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: callData.type === 'video',
+      });
       await pc.setLocalDescription(offer);
-      
+
       socket.emit('call_user', {
         targetUserId: callData.otherUser.id,
         type: callData.type,
@@ -129,27 +156,25 @@ export default function CallModal({ callData, onCallEnd }) {
       const stream = await getMedia(callData.type === 'video');
       const pc = await initCall(stream);
       if (!pc) return;
-      
+
       await pc.setRemoteDescription(new RTCSessionDescription(callData.signalData));
-      
-      // Process pending candidates
-      if (pendingCandidatesRef.current.length > 0) {
-        for (const candidate of pendingCandidatesRef.current) {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(err => {
-            console.error('Error adding queued ICE candidate:', err);
-          });
-        }
-        pendingCandidatesRef.current = [];
+
+      // Process any queued ICE candidates
+      for (const candidate of pendingCandidatesRef.current) {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(err => {
+          console.error('Error adding queued ICE candidate:', err);
+        });
       }
-      
+      pendingCandidatesRef.current = [];
+
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      
+
       socket.emit('accept_call', {
         targetUserId: callData.otherUser.id,
         signalData: answer
       });
-      
+
       setCallState('connected');
     } catch (err) {
       // Handled in getMedia
@@ -170,18 +195,22 @@ export default function CallModal({ callData, onCallEnd }) {
   };
 
   const cleanup = () => {
-    if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
     }
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
     }
-    localStreamRef.current = null;
+    if (localVideoRef.current) localVideoRef.current.srcObject = null;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
     remoteStreamRef.current = null;
-    peerConnectionRef.current = null;
-    setLocalStream(null);
-    setRemoteStream(null);
     pendingCandidatesRef.current = [];
   };
 
@@ -191,19 +220,19 @@ export default function CallModal({ callData, onCallEnd }) {
 
     socket.on('call_accepted', async ({ signalData }) => {
       try {
-        if (peerConnectionRef.current) {
-          await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(signalData));
-          setCallState('connected');
+        const pc = peerConnectionRef.current;
+        if (pc) {
+          await pc.setRemoteDescription(new RTCSessionDescription(signalData));
 
-          // Process pending candidates
-          if (pendingCandidatesRef.current.length > 0) {
-            for (const candidate of pendingCandidatesRef.current) {
-              await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(err => {
-                console.error('Error adding queued ICE candidate:', err);
-              });
-            }
-            pendingCandidatesRef.current = [];
+          // Process any queued ICE candidates
+          for (const candidate of pendingCandidatesRef.current) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(err => {
+              console.error('Error adding queued ICE candidate:', err);
+            });
           }
+          pendingCandidatesRef.current = [];
+
+          setCallState('connected');
         }
       } catch (err) {
         console.error('Error accepting call answer:', err);
@@ -225,9 +254,10 @@ export default function CallModal({ callData, onCallEnd }) {
     socket.on('ice_candidate', async ({ candidate }) => {
       try {
         const pc = peerConnectionRef.current;
-        if (pc && pc.remoteDescription) {
+        if (pc && pc.remoteDescription && pc.remoteDescription.type) {
           await pc.addIceCandidate(new RTCIceCandidate(candidate));
         } else {
+          // Queue candidate until remote description is set
           pendingCandidatesRef.current.push(candidate);
         }
       } catch (err) {
@@ -265,19 +295,14 @@ export default function CallModal({ callData, onCallEnd }) {
     }
   }, [callState]);
 
-  // Bind remote stream to media element
+  // Re-bind local video stream if video is turned back on
   useEffect(() => {
-    if (callState === 'connected' && remoteStream && remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = remoteStream;
+    if (callState === 'connected' && localStreamRef.current && localVideoRef.current && callData.type === 'video' && !isVideoOff) {
+      if (!localVideoRef.current.srcObject) {
+        localVideoRef.current.srcObject = localStreamRef.current;
+      }
     }
-  }, [callState, remoteStream]);
-
-  // Bind local stream to video element
-  useEffect(() => {
-    if (callState === 'connected' && localStream && localVideoRef.current && callData.type === 'video' && !isVideoOff) {
-      localVideoRef.current.srcObject = localStream;
-    }
-  }, [callState, localStream, isVideoOff]);
+  }, [callState, isVideoOff]);
 
   // Toggle Mute Audio
   const toggleMute = () => {
@@ -297,12 +322,6 @@ export default function CallModal({ callData, onCallEnd }) {
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsVideoOff(!videoTrack.enabled);
-      } else if (isVideoOff) {
-        // Try to get video media if it wasn't captured initially (e.g. upgraded from voice)
-        getMedia(true).then(newStream => {
-          // Replace tracks or restart peer connection
-          showToast('Upgrading call...', 'info');
-        }).catch(() => {});
       }
     }
   };
@@ -316,16 +335,51 @@ export default function CallModal({ callData, onCallEnd }) {
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(11, 20, 26, 0.95)', zIndex: 9999,
+      background: 'rgba(11, 20, 26, 0.97)', zIndex: 9999,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       backdropFilter: 'blur(10px)', color: 'var(--text-primary)', fontFamily: 'var(--font-family)'
     }}>
-      
+
+      {/* ── Always-mounted media elements (hidden when not connected) ── */}
+      {/* Remote video — always in DOM so ref is always available */}
+      <video
+        ref={remoteVideoRef}
+        autoPlay
+        playsInline
+        style={{
+          display: callState === 'connected' && callData.type === 'video' ? 'block' : 'none',
+          width: '100%', height: '100%', objectFit: 'cover',
+          position: 'absolute', top: 0, left: 0
+        }}
+      />
+      {/* Remote audio — always in DOM, voice calls only */}
+      <audio
+        ref={remoteAudioRef}
+        autoPlay
+        playsInline
+        style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
+      />
+      {/* Local video PIP — always in DOM, shown only during video calls */}
+      <video
+        ref={localVideoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{
+          display: callState === 'connected' && callData.type === 'video' && !isVideoOff ? 'block' : 'none',
+          position: 'absolute', bottom: '90px', right: '20px',
+          width: '120px', height: '180px', objectFit: 'cover',
+          borderRadius: '8px', border: '2px solid white', zIndex: 100,
+          boxShadow: 'var(--shadow-lg)'
+        }}
+      />
+
+      {/* ── Incoming call screen ── */}
       {callState === 'incoming' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', textAlign: 'center' }}>
           <div style={{ position: 'relative' }}>
             <div className="user-avatar-mini" style={{ width: '120px', height: '120px', fontSize: '40px', boxShadow: '0 0 30px rgba(0, 168, 132, 0.3)' }}>
-              {otherUserAvatar ? <img src={otherUserAvatar} style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : otherUserName[0]?.toUpperCase()}
+              {otherUserAvatar ? <img src={otherUserAvatar} alt="" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : otherUserName[0]?.toUpperCase()}
             </div>
             <div style={{
               position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -339,52 +393,63 @@ export default function CallModal({ callData, onCallEnd }) {
               Incoming {callData.type === 'video' ? 'Video' : 'Voice'} Call...
             </p>
           </div>
-          
+
           <div style={{ display: 'flex', gap: '40px', marginTop: '20px' }}>
-            <button 
-              onClick={handleDecline} 
+            <button
+              onClick={handleDecline}
               style={{
-                width: '60px', height: '60px', borderRadius: '50%', background: 'var(--accent-danger)',
+                width: '68px', height: '68px', borderRadius: '50%', background: 'var(--accent-danger)',
                 border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
+              title="Decline"
             >
-              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor" style={{ transform: 'rotate(135deg)' }}>
+                <path d="M6.62 10.79a15.149 15.149 0 0 0 6.59 6.59l2.2-2.2c.28-.28.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+              </svg>
             </button>
-            <button 
-              onClick={acceptCall} 
+            <button
+              onClick={acceptCall}
               style={{
-                width: '60px', height: '60px', borderRadius: '50%', background: 'var(--online-color)',
+                width: '68px', height: '68px', borderRadius: '50%', background: 'var(--online-color)',
                 border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
+              title="Accept"
             >
-              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M6.62 10.79a15.149 15.149 0 0 0 6.59 6.59l2.2-2.2c.28-.28.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
+                <path d="M6.62 10.79a15.149 15.149 0 0 0 6.59 6.59l2.2-2.2c.28-.28.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+              </svg>
             </button>
           </div>
         </div>
       )}
 
+      {/* ── Ringing screen ── */}
       {callState === 'ringing' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', textAlign: 'center' }}>
           <div className="user-avatar-mini" style={{ width: '120px', height: '120px', fontSize: '40px' }}>
-            {otherUserAvatar ? <img src={otherUserAvatar} style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : otherUserName[0]?.toUpperCase()}
+            {otherUserAvatar ? <img src={otherUserAvatar} alt="" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : otherUserName[0]?.toUpperCase()}
           </div>
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: 600 }}>{otherUserName}</h2>
             <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '15px' }}>Ringing...</p>
           </div>
-          
-          <button 
-            onClick={handleEndCall} 
+
+          <button
+            onClick={handleEndCall}
             style={{
               width: '60px', height: '60px', borderRadius: '50%', background: 'var(--accent-danger)',
               border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '30px'
             }}
+            title="Cancel call"
           >
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" style={{ transform: 'rotate(135deg)' }}>
+              <path d="M6.62 10.79a15.149 15.149 0 0 0 6.59 6.59l2.2-2.2c.28-.28.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+            </svg>
           </button>
         </div>
       )}
 
+      {/* ── Error screen ── */}
       {callState === 'error' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', textAlign: 'center', padding: '0 20px', maxWidth: '400px' }}>
           <div style={{ color: 'var(--accent-danger)' }}>
@@ -392,9 +457,8 @@ export default function CallModal({ callData, onCallEnd }) {
           </div>
           <h2 style={{ fontSize: '20px', fontWeight: 600 }}>Call Failed</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.5 }}>{errorMessage}</p>
-          
-          <button 
-            onClick={onCallEnd} 
+          <button
+            onClick={onCallEnd}
             style={{
               background: 'var(--bg-active)', border: '1px solid var(--border-color)',
               color: 'var(--text-primary)', padding: '10px 24px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px'
@@ -405,34 +469,21 @@ export default function CallModal({ callData, onCallEnd }) {
         </div>
       )}
 
+      {/* ── Connected screen overlays ── */}
       {callState === 'connected' && (
-        <div style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-          
-          {/* Remote Video Stream (Main Feed) */}
+        <>
+          {/* Video call timer overlay */}
           {callData.type === 'video' && (
-            <video 
-              ref={remoteVideoRef} 
-              autoPlay 
-              playsInline 
-              style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }}
-            />
+            <div style={{ position: 'absolute', top: '20px', left: '20px', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: '4px', zIndex: 10, fontSize: '14px', fontWeight: 'bold' }}>
+              {otherUserName} • {formatDuration(callDuration)}
+            </div>
           )}
 
-          {/* Remote Audio Stream (Voice Call - Hidden, but kept in layout to avoid browser power suspension) */}
-          {callData.type === 'voice' && (
-            <audio 
-              ref={remoteVideoRef} 
-              autoPlay 
-              playsInline 
-              style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
-            />
-          )}
-
-          {/* Voice Call Avatar View */}
+          {/* Voice call avatar */}
           {callData.type === 'voice' && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', textAlign: 'center', zIndex: 10 }}>
               <div className="user-avatar-mini" style={{ width: '140px', height: '140px', fontSize: '50px', border: '3px solid var(--accent-primary)', animation: 'pulse 2.5s infinite ease-in-out' }}>
-                {otherUserAvatar ? <img src={otherUserAvatar} style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : otherUserName[0]?.toUpperCase()}
+                {otherUserAvatar ? <img src={otherUserAvatar} alt="" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : otherUserName[0]?.toUpperCase()}
               </div>
               <div>
                 <h2 style={{ fontSize: '26px', fontWeight: 600 }}>{otherUserName}</h2>
@@ -443,30 +494,7 @@ export default function CallModal({ callData, onCallEnd }) {
             </div>
           )}
 
-          {/* Local Video PIP Overlay (Bottom Right) */}
-          {callData.type === 'video' && !isVideoOff && (
-            <video 
-              ref={localVideoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              style={{
-                position: 'absolute', bottom: '90px', right: '20px',
-                width: '120px', height: '180px', objectFit: 'cover',
-                borderRadius: '8px', border: '2px solid white', zIndex: 100,
-                boxShadow: 'var(--shadow-lg)'
-              }}
-            />
-          )}
-
-          {/* Video Timer Overlay */}
-          {callData.type === 'video' && (
-            <div style={{ position: 'absolute', top: '20px', left: '20px', background: 'rgba(0,0,0,0.6)', padding: '6px 12px', borderRadius: '4px', zIndex: 10, fontSize: '14px', fontWeight: 'bold' }}>
-              {otherUserName} • {formatDuration(callDuration)}
-            </div>
-          )}
-
-          {/* Call Controls Floating Bar */}
+          {/* Call controls bar */}
           <div style={{
             position: 'absolute', bottom: '24px',
             display: 'flex', gap: '20px', zIndex: 10,
@@ -474,8 +502,8 @@ export default function CallModal({ callData, onCallEnd }) {
             boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border-light)'
           }}>
             {/* Audio Mute */}
-            <button 
-              onClick={toggleMute} 
+            <button
+              onClick={toggleMute}
               style={{
                 width: '46px', height: '46px', borderRadius: '50%', background: isMuted ? 'var(--accent-danger)' : 'var(--bg-active)',
                 border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -489,10 +517,10 @@ export default function CallModal({ callData, onCallEnd }) {
               )}
             </button>
 
-            {/* Video Hide (Only for Video Calls) */}
+            {/* Video Toggle (Video Calls Only) */}
             {callData.type === 'video' && (
-              <button 
-                onClick={toggleVideo} 
+              <button
+                onClick={toggleVideo}
                 style={{
                   width: '46px', height: '46px', borderRadius: '50%', background: isVideoOff ? 'var(--accent-danger)' : 'var(--bg-active)',
                   border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -507,23 +535,24 @@ export default function CallModal({ callData, onCallEnd }) {
               </button>
             )}
 
-            {/* Hang Up Call */}
-            <button 
-              onClick={handleEndCall} 
+            {/* Hang Up */}
+            <button
+              onClick={handleEndCall}
               style={{
                 width: '46px', height: '46px', borderRadius: '50%', background: 'var(--accent-danger)',
                 border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
               title="Hang up"
             >
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" style={{ transform: 'rotate(135deg)' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" style={{ transform: 'rotate(135deg)' }}>
+                <path d="M6.62 10.79a15.149 15.149 0 0 0 6.59 6.59l2.2-2.2c.28-.28.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+              </svg>
             </button>
           </div>
-          
-        </div>
+        </>
       )}
-      
-      {/* Pulse Animations style injected inline */}
+
+      {/* Pulse animation */}
       <style>{`
         @keyframes pulse {
           0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 168, 132, 0.4); }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { get, post } from '../utils/api';
 import Sidebar from '../components/Sidebar/Sidebar';
@@ -24,29 +24,45 @@ export default function Chat() {
 
   const location = useLocation();
 
+  // Keep a ref to selected conversation to avoid stale closures in socket handlers
+  const selectedConversationRef = useRef(selectedConversation);
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  // Keep a ref to track activeCallData for the socket event listener closure
+  const activeCallDataRef = useRef(activeCallData);
+  useEffect(() => {
+    activeCallDataRef.current = activeCallData;
+  }, [activeCallData]);
+
   useEffect(() => {
     fetchConversations();
   }, []);
 
+  // Handle navigation from InvitePage — add the conversation to sidebar if not present
   useEffect(() => {
-    if (location.state?.selectConversation) {
-      const conv = location.state.selectConversation;
-      const autoSelect = location.state.autoSelect !== false;
-      
-      if (autoSelect) {
-        // Select the conversation
-        setSelectedConversation(conv);
-      }
-      
-      // Add to sidebar list if not present
+    if (!location.state?.selectConversation) return;
+
+    const conv = location.state.selectConversation;
+    const autoSelect = location.state.autoSelect !== false;
+
+    // Refresh full list from server first, then ensure this conv is included
+    fetchConversations().then((loadedConvs) => {
+      const alreadyIn = (loadedConvs || []).some(c => c.id === conv.id);
+
       setConversations(prev => {
         if (prev.some(c => c.id === conv.id)) return prev;
         return [conv, ...prev];
       });
 
-      // Clear the navigation state so page refreshes don't override future selections
-      window.history.replaceState({}, document.title);
-    }
+      if (autoSelect) {
+        setSelectedConversation(conv);
+      }
+    });
+
+    // Clear the navigation state so page refreshes don't re-trigger
+    window.history.replaceState({}, document.title);
   }, [location.state]);
 
   useEffect(() => {
@@ -86,11 +102,11 @@ export default function Chat() {
     // Emit read receipt event for the whole conversation
     socket.emit('message_read', { conversationId: selectedConversation.id });
 
-    // Reset unread count locally in list
+    // Reset unread count locally in list immediately
     setConversations(prev =>
       prev.map(c => {
         if (c.id === selectedConversation.id) {
-          return { ...c, unreadCount: 0 };
+          return { ...c, unreadCount: 0, unread_count: 0 };
         }
         return c;
       })
@@ -102,48 +118,54 @@ export default function Chat() {
     if (!socket) return;
 
     const handleNewMessage = (msg) => {
+      // Use ref to get the current selected conversation without stale closure
+      const currentSelectedId = selectedConversationRef.current?.id;
+
       setConversations(prev => {
         const index = prev.findIndex(c => c.id === msg.conversation_id);
-        const isActive = selectedConversation?.id === msg.conversation_id;
+        const isActive = currentSelectedId === msg.conversation_id;
 
         if (index !== -1) {
           const updated = [...prev];
           const conv = { ...updated[index] };
-          
+
           conv.lastMessage = msg;
+          conv.last_message = msg;
           conv.last_message_time = msg.created_at;
-          
+
+          // Only increment unread if not the active conversation and not our own message
           if (!isActive && msg.sender_id !== currentUser?.id) {
-            conv.unreadCount = (conv.unreadCount || 0) + 1;
+            const currentCount = conv.unreadCount || conv.unread_count || 0;
+            conv.unreadCount = currentCount + 1;
+            conv.unread_count = currentCount + 1;
           }
 
           // Move the conversation to the top of the sidebar list
           updated.splice(index, 1);
           return [conv, ...updated];
         } else {
-          // If conversation isn't in the list (first message), refetch list
+          // If conversation isn't in the list (first message from new contact), refetch
           fetchConversations();
           return prev;
         }
       });
 
-      // If active conversation, immediately mark it as read
-      if (selectedConversation?.id === msg.conversation_id && msg.sender_id !== currentUser?.id) {
+      // If this is the active conversation and it's someone else's message, mark it read
+      if (selectedConversationRef.current?.id === msg.conversation_id && msg.sender_id !== currentUser?.id) {
         socket.emit('message_read', { conversationId: msg.conversation_id });
       }
     };
 
     const handleConversationRead = ({ conversationId, userId }) => {
-      if (userId === currentUser?.id) {
-        setConversations(prev =>
-          prev.map(c => {
-            if (c.id === conversationId) {
-              return { ...c, unreadCount: 0 };
-            }
-            return c;
-          })
-        );
-      }
+      // Clear unread badge for this conversation for the current user
+      setConversations(prev =>
+        prev.map(c => {
+          if (c.id === conversationId) {
+            return { ...c, unreadCount: 0, unread_count: 0 };
+          }
+          return c;
+        })
+      );
     };
 
     socket.on('new_message', handleNewMessage);
@@ -153,20 +175,17 @@ export default function Chat() {
       socket.off('new_message', handleNewMessage);
       socket.off('conversation_read', handleConversationRead);
     };
-  }, [socket, selectedConversation?.id, currentUser?.id]);
-
-  // Keep a ref to track activeCallData for the socket event listener closure
-  const activeCallDataRef = React.useRef(activeCallData);
-  useEffect(() => {
-    activeCallDataRef.current = activeCallData;
-  }, [activeCallData]);
+  }, [socket, currentUser?.id]);
 
   const fetchConversations = async () => {
     try {
       const data = await get('/messages/conversations');
-      setConversations(data.conversations || []);
+      const convs = data.conversations || [];
+      setConversations(convs);
+      return convs;
     } catch (err) {
       console.error('Failed to fetch conversations:', err);
+      return [];
     }
   };
 
