@@ -8,10 +8,12 @@ import GroupCreate from '../components/Group/GroupCreate';
 import NewChatPanel from '../components/Sidebar/NewChatPanel';
 import InvitePanel from '../components/Sidebar/InvitePanel';
 import { useSocketContext } from '../context/SocketContext';
+import { useAuth } from '../context/AuthContext';
 import CallModal from '../components/ChatWindow/CallModal';
 
 export default function Chat() {
   const { socket } = useSocketContext();
+  const { user: currentUser } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -73,6 +75,82 @@ export default function Chat() {
       socket.off('incoming_call', handleIncomingCall);
     };
   }, [socket]);
+
+  // Mark active conversation as read and reset unread badge locally
+  useEffect(() => {
+    if (!selectedConversation || !socket) return;
+
+    // Emit read receipt event for the whole conversation
+    socket.emit('message_read', { conversationId: selectedConversation.id });
+
+    // Reset unread count locally in list
+    setConversations(prev =>
+      prev.map(c => {
+        if (c.id === selectedConversation.id) {
+          return { ...c, unreadCount: 0 };
+        }
+        return c;
+      })
+    );
+  }, [selectedConversation?.id, socket]);
+
+  // Real-time conversation list updates (last message preview, unread count increments)
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewMessage = (msg) => {
+      setConversations(prev => {
+        const index = prev.findIndex(c => c.id === msg.conversation_id);
+        const isActive = selectedConversation?.id === msg.conversation_id;
+
+        if (index !== -1) {
+          const updated = [...prev];
+          const conv = { ...updated[index] };
+          
+          conv.lastMessage = msg;
+          conv.last_message_time = msg.created_at;
+          
+          if (!isActive && msg.sender_id !== currentUser?.id) {
+            conv.unreadCount = (conv.unreadCount || 0) + 1;
+          }
+
+          // Move the conversation to the top of the sidebar list
+          updated.splice(index, 1);
+          return [conv, ...updated];
+        } else {
+          // If conversation isn't in the list (first message), refetch list
+          fetchConversations();
+          return prev;
+        }
+      });
+
+      // If active conversation, immediately mark it as read
+      if (selectedConversation?.id === msg.conversation_id && msg.sender_id !== currentUser?.id) {
+        socket.emit('message_read', { conversationId: msg.conversation_id });
+      }
+    };
+
+    const handleConversationRead = ({ conversationId, userId }) => {
+      if (userId === currentUser?.id) {
+        setConversations(prev =>
+          prev.map(c => {
+            if (c.id === conversationId) {
+              return { ...c, unreadCount: 0 };
+            }
+            return c;
+          })
+        );
+      }
+    };
+
+    socket.on('new_message', handleNewMessage);
+    socket.on('conversation_read', handleConversationRead);
+
+    return () => {
+      socket.off('new_message', handleNewMessage);
+      socket.off('conversation_read', handleConversationRead);
+    };
+  }, [socket, selectedConversation?.id, currentUser?.id]);
 
   // Keep a ref to track activeCallData for the socket event listener closure
   const activeCallDataRef = React.useRef(activeCallData);
