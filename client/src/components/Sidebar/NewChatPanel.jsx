@@ -34,7 +34,7 @@ export default function NewChatPanel({ onClose, onSelectUser }) {
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const data = await get(`/users/search?q=${searchQuery}`);
+        const data = await get(`/users/search?q=${encodeURIComponent(searchQuery.trim())}`);
         setSearchResults(data.users || data || []);
       } catch (err) {
         console.error(err);

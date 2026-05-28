@@ -14,7 +14,7 @@ export default function SearchBar({ onSelectUser }) {
 
     const timer = setTimeout(async () => {
       try {
-        const data = await get(`/users/search?q=${query}`);
+        const data = await get(`/users/search?q=${encodeURIComponent(query.trim())}`);
         setResults(data.users || data || []);
       } catch (err) {
         console.error(err);

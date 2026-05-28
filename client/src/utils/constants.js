@@ -1,10 +1,19 @@
-const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const hostname = window.location.hostname;
+const isDev = 
+  hostname === 'localhost' || 
+  hostname === '127.0.0.1' || 
+  hostname === '[::1]' ||
+  hostname.endsWith('.local') ||
+  /^192\.168\./.test(hostname) ||
+  /^10\./.test(hostname) ||
+  /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname);
+
 const envUrl = import.meta.env?.VITE_API_URL;
 
 export const SOCKET_URL = envUrl 
   ? envUrl 
   : (isDev 
-      ? 'http://localhost:3001' 
+      ? `http://${hostname}:3001` 
       : 'https://shameer123-zynk-backend.hf.space');
 
 export const API_BASE = `${SOCKET_URL}/api`;

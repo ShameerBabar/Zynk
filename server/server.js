@@ -58,9 +58,32 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
       'https://zynk-chat-shameer-2026.firebaseapp.com'
     ];
 
+function checkOrigin(origin, callback) {
+  if (!origin) return callback(null, true);
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname;
+    const isLocal = 
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '[::1]' ||
+      hostname.endsWith('.local') ||
+      /^192\.168\./.test(hostname) ||
+      /^10\./.test(hostname) ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname);
+      
+    if (isLocal || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      return callback(null, true);
+    }
+  } catch (err) {
+    // If URL parsing fails, reject
+  }
+  return callback(null, false);
+}
+
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins.includes('*') ? '*' : allowedOrigins,
+    origin: checkOrigin,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
   }
@@ -69,7 +92,7 @@ const io = new Server(server, {
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: false })); // Allow loading images from localhost/external
 app.use(cors({
-  origin: allowedOrigins.includes('*') ? '*' : allowedOrigins,
+  origin: checkOrigin,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));

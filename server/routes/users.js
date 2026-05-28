@@ -48,8 +48,8 @@ router.get('/search', (req, res) => {
         u.is_online, u.last_seen,
         CASE
           WHEN fr.status = 'accepted' THEN 'friend'
-          WHEN fr.status = 'pending' AND fr.sender_id = :me THEN 'pending_sent'
-          WHEN fr.status = 'pending' AND fr.receiver_id = :me THEN 'pending_received'
+          WHEN fr.status = 'pending' AND fr.sender_id = ?1 THEN 'pending_sent'
+          WHEN fr.status = 'pending' AND fr.receiver_id = ?1 THEN 'pending_received'
           ELSE 'none'
         END AS relationship,
         fr.id AS request_id
@@ -57,20 +57,20 @@ router.get('/search', (req, res) => {
       LEFT JOIN friend_requests fr
         ON fr.status IN ('pending', 'accepted')
         AND (
-          (fr.sender_id = :me AND fr.receiver_id = u.id)
-          OR (fr.receiver_id = :me AND fr.sender_id = u.id)
+          (fr.sender_id = ?1 AND fr.receiver_id = u.id)
+          OR (fr.receiver_id = ?1 AND fr.sender_id = u.id)
         )
-      WHERE u.id != :me
+      WHERE u.id != ?1
         AND (
-          LOWER(u.username) LIKE :term
-          OR LOWER(COALESCE(u.display_name, '')) LIKE :term
-          OR u.phone LIKE :term
+          LOWER(u.username) LIKE ?2
+          OR LOWER(COALESCE(u.display_name, '')) LIKE ?2
+          OR u.phone LIKE ?2
         )
       ORDER BY
-        CASE WHEN LOWER(COALESCE(u.display_name, u.username)) LIKE :term THEN 0 ELSE 1 END,
+        CASE WHEN LOWER(COALESCE(u.display_name, u.username)) LIKE ?2 THEN 0 ELSE 1 END,
         u.display_name ASC
       LIMIT 30
-    `).all({ me: userId, term: searchTerm });
+    `).all(userId, searchTerm);
 
     return res.json({ users });
   } catch (err) {
