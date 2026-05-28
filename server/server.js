@@ -161,16 +161,7 @@ app.get('/api/public/user/:username', (req, res) => {
   }
 });
 
-// Temporary debug route to inspect database users
-app.get('/api/public/debug-users', (req, res) => {
-  try {
-    const db = req.app.get('db');
-    const users = db.prepare('SELECT id, username, display_name, phone, google_id, email FROM users').all();
-    return res.json({ users });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
-  }
-});
+
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
