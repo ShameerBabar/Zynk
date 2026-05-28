@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../utils/constants';
 import { useAuth } from './AuthContext';
+import { subscribeToPush } from '../utils/pushNotifications';
 
 const SocketContext = createContext(null);
 
@@ -47,6 +48,9 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (!token || !user) return;
+
+    // Subscribe to Web Push notifications (background messages + calls)
+    subscribeToPush(token).catch(err => console.warn('[Push] Auto-subscribe failed:', err));
 
     const newSocket = io(SOCKET_URL, {
       auth: { token }
