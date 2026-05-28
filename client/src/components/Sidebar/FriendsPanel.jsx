@@ -186,13 +186,24 @@ export default function FriendsPanel({ onClose, onStartChat }) {
     }
   };
 
-  // ── Get relationship status for search results ───────────────────────────
-  const getRelationshipStatus = (userId) => {
-    if (friends.some(f => f.id === userId)) return 'friend';
-    if (outgoing.some(r => r.receiver_id === userId)) return 'sent';
-    if (incoming.some(r => r.sender_id === userId)) return 'received';
+  // ── Get relationship status — now comes directly from search results ─────────
+  // The server JOINs friend_requests and returns relationship inline, so
+  // both sides always see the correct state without any timing issues.
+  const getRelationshipStatus = (user) => {
+    // If the user object has a server-side relationship field, use it
+    if (user.relationship) {
+      if (user.relationship === 'friend') return 'friend';
+      if (user.relationship === 'pending_sent') return 'sent';
+      if (user.relationship === 'pending_received') return 'received';
+      return 'none';
+    }
+    // Fallback: check local state (for users found before inline data)
+    if (friends.some(f => f.id === user.id)) return 'friend';
+    if (outgoing.some(r => r.receiver_id === user.id)) return 'sent';
+    if (incoming.some(r => r.sender_id === user.id)) return 'received';
     return 'none';
   };
+
 
   const pendingCount = incoming.length;
 
@@ -278,7 +289,7 @@ export default function FriendsPanel({ onClose, onStartChat }) {
 
             <div className="friends-list">
               {searchResults.map(user => {
-                const status = getRelationshipStatus(user.id);
+                const status = getRelationshipStatus(user);
                 const isLoading = actionLoading[user.id];
 
                 return (
@@ -316,8 +327,8 @@ export default function FriendsPanel({ onClose, onStartChat }) {
                         <button
                           className="friend-btn friend-btn-accept"
                           onClick={() => {
-                            const req = incoming.find(r => r.sender_id === user.id);
-                            if (req) acceptRequest(req.id, user.id);
+                            const reqId = user.request_id || (incoming.find(r => r.sender_id === user.id)?.id);
+                            if (reqId) acceptRequest(reqId, user.id);
                           }}
                         >
                           Accept

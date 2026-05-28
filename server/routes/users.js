@@ -25,8 +25,8 @@ router.use(authenticate);
 /**
  * GET /search?q=<query>
  * Searches users by username or display_name. Excludes the current user.
- * Case-insensitive. Handles NULL display_name gracefully.
- * Returns up to 30 results.
+ * Returns relationship status (none/pending_sent/pending_received/friend)
+ * inline so the frontend never has async mismatch.
  */
 router.get('/search', (req, res) => {
   try {
@@ -37,24 +37,40 @@ router.get('/search', (req, res) => {
       return res.json({ users: [] });
     }
 
-    // LOWER() ensures case-insensitive match even for Unicode
-    // COALESCE handles NULL display_name fields safely
+    const userId = req.user.id;
     const searchTerm = `%${q.trim().toLowerCase()}%`;
 
+    // Join friend_requests to get relationship status inline.
+    // COALESCE handles NULL display_name. LOWER() for case-insensitive match.
     const users = db.prepare(`
-      SELECT id, username, phone, display_name, avatar_url, status_text, is_online, last_seen
-      FROM users
-      WHERE id != ?
+      SELECT
+        u.id, u.username, u.display_name, u.avatar_url, u.status_text,
+        u.is_online, u.last_seen,
+        CASE
+          WHEN fr.status = 'accepted' THEN 'friend'
+          WHEN fr.status = 'pending' AND fr.sender_id = :me THEN 'pending_sent'
+          WHEN fr.status = 'pending' AND fr.receiver_id = :me THEN 'pending_received'
+          ELSE 'none'
+        END AS relationship,
+        fr.id AS request_id
+      FROM users u
+      LEFT JOIN friend_requests fr
+        ON fr.status IN ('pending', 'accepted')
         AND (
-          LOWER(username) LIKE ?
-          OR LOWER(COALESCE(display_name, '')) LIKE ?
-          OR phone LIKE ?
+          (fr.sender_id = :me AND fr.receiver_id = u.id)
+          OR (fr.receiver_id = :me AND fr.sender_id = u.id)
+        )
+      WHERE u.id != :me
+        AND (
+          LOWER(u.username) LIKE :term
+          OR LOWER(COALESCE(u.display_name, '')) LIKE :term
+          OR u.phone LIKE :term
         )
       ORDER BY
-        CASE WHEN LOWER(COALESCE(display_name, username)) LIKE ? THEN 0 ELSE 1 END,
-        display_name ASC
+        CASE WHEN LOWER(COALESCE(u.display_name, u.username)) LIKE :term THEN 0 ELSE 1 END,
+        u.display_name ASC
       LIMIT 30
-    `).all(req.user.id, searchTerm, searchTerm, searchTerm, searchTerm);
+    `).all({ me: userId, term: searchTerm });
 
     return res.json({ users });
   } catch (err) {
@@ -62,6 +78,7 @@ router.get('/search', (req, res) => {
     return res.status(500).json({ error: 'Internal server error during search.' });
   }
 });
+
 
 
 /**
