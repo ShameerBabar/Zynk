@@ -1,5 +1,6 @@
-const CACHE_NAME = 'zynk-cache-v3';
+const CACHE_NAME = 'zynk-cache-v4';
 const ASSETS = ['/', '/index.html', '/manifest.json'];
+
 
 // ── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', (e) => {
@@ -132,3 +133,15 @@ self.addEventListener('pushsubscriptionchange', (e) => {
     })
   );
 });
+
+// ── Update Handler ────────────────────────────────────────────────────────────
+// When the page sends SKIP_WAITING, activate immediately and tell all clients to reload
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (e.data && e.data.type === 'GET_VERSION') {
+    e.source.postMessage({ type: 'VERSION', version: CACHE_NAME });
+  }
+});
+
