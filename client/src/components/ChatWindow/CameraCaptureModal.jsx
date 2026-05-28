@@ -54,6 +54,11 @@ export default function CameraCaptureModal({ onClose, onCapture }) {
     // Draw the current video frame onto canvas
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
+
+    // Mirror the canvas drawing so the captured photo matches the mirrored preview
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Convert canvas to image blob
@@ -99,7 +104,7 @@ export default function CameraCaptureModal({ onClose, onCapture }) {
               autoPlay 
               playsInline 
               muted 
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: loading ? 'none' : 'block' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: loading ? 'none' : 'block', transform: 'scaleX(-1)' }}
             />
           )}
 

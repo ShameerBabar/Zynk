@@ -370,7 +370,8 @@ export default function CallModal({ callData, onCallEnd }) {
           position: 'absolute', bottom: '90px', right: '20px',
           width: '120px', height: '180px', objectFit: 'cover',
           borderRadius: '8px', border: '2px solid white', zIndex: 100,
-          boxShadow: 'var(--shadow-lg)'
+          boxShadow: 'var(--shadow-lg)',
+          transform: 'scaleX(-1)'
         }}
       />
 
