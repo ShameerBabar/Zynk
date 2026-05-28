@@ -77,6 +77,27 @@ export default function Chat() {
           avatar_url: callerAvatar
         }
       });
+
+      // Show background system/browser notification if the window is in the background
+      if (document.visibilityState === 'hidden') {
+        if (window.zynk && typeof window.zynk.sendNotification === 'function') {
+          window.zynk.sendNotification(
+            `📞 Incoming ${type === 'video' ? 'Video' : 'Voice'} Call`,
+            `${callerName} is calling you on Zynk`
+          );
+        } else if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification(`📞 Incoming ${type === 'video' ? 'Video' : 'Voice'} Call`, {
+              body: `${callerName} is calling you on Zynk`,
+              icon: '/manifest-icon-192.png',
+              tag: `call-${from}`,
+              requireInteraction: true
+            });
+          } catch (err) {
+            console.error('Browser Call Notification error:', err);
+          }
+        }
+      }
     };
 
     socket.on('incoming_call', handleIncomingCall);

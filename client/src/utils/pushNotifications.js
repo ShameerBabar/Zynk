@@ -48,10 +48,31 @@ export async function subscribeToPush(authToken) {
 
     // Check if already subscribed
     let subscription = await registration.pushManager.getSubscription();
+    const serverKeyUint8 = urlBase64ToUint8Array(publicKey);
+
+    if (subscription) {
+      // Check if the applicationServerKey matches the server's key
+      const currentKey = subscription.options.applicationServerKey;
+      let isMatch = false;
+      if (currentKey) {
+        const currentKeyUint8 = new Uint8Array(currentKey);
+        if (currentKeyUint8.length === serverKeyUint8.length) {
+          isMatch = currentKeyUint8.every((val, index) => val === serverKeyUint8[index]);
+        }
+      }
+
+      if (!isMatch) {
+        console.log('[Push] VAPID key mismatch, unsubscribing existing push subscription...');
+        await subscription.unsubscribe();
+        subscription = null;
+      }
+    }
+
     if (!subscription) {
+      console.log('[Push] Subscribing with server VAPID key...');
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
+        applicationServerKey: serverKeyUint8
       });
     }
 
