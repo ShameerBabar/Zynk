@@ -17,8 +17,9 @@ const { authenticate, JWT_SECRET } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Token validity duration
-const TOKEN_EXPIRY = '7d';
+// Token validity duration — 90 days so users stay logged in
+const TOKEN_EXPIRY = '90d';
+
 
 /**
  * Generates a JWT for the given user.
