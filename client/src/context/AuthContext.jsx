@@ -26,12 +26,14 @@ export const AuthProvider = ({ children }) => {
           // Only clear session on genuine auth failure (expired/invalid token)
           // Don't log out on network errors (server restarting, no internet, etc.)
           const isAuthError = err.message?.includes('401') ||
+                              err.message?.includes('404') ||
+                              err.message?.toLowerCase().includes('not found') ||
                               err.message?.includes('Unauthorized') ||
                               err.message?.includes('Invalid token') ||
                               err.message?.includes('jwt expired') ||
                               err.message?.includes('token');
           if (isAuthError) {
-            console.warn('[Auth] Token invalid/expired — logging out');
+            console.warn('[Auth] Token invalid/expired or user not found — logging out');
             logout();
           } else {
             // Network/server error — keep token, try again later
