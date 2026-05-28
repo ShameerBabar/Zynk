@@ -173,6 +173,44 @@ function initializeDatabase(db) {
         ON device_contacts(user_id);
     `);
 
+    // ── Web Push Subscriptions ───────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id      TEXT NOT NULL,
+        subscription TEXT NOT NULL,
+        created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, subscription),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user
+        ON push_subscriptions(user_id);
+    `);
+
+    // ── Friend Requests ──────────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS friend_requests (
+        id          TEXT PRIMARY KEY,
+        sender_id   TEXT NOT NULL,
+        receiver_id TEXT NOT NULL,
+        status      TEXT DEFAULT 'pending',
+        created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(sender_id, receiver_id),
+        FOREIGN KEY (sender_id)   REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_friend_requests_receiver
+        ON friend_requests(receiver_id, status);
+    `);
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_friend_requests_sender
+        ON friend_requests(sender_id, status);
+    `);
+
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');

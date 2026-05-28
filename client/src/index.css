@@ -229,6 +229,17 @@ input, textarea {
   position: relative;
 }
 
+/* Sidebar wrapper — panels overlay inside this */
+.sidebar-wrapper {
+  position: relative;
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
 .chat-window-container {
   flex: 1;
   position: relative;
@@ -241,7 +252,7 @@ input, textarea {
   position: absolute;
   top: 0;
   left: 0;
-  width: var(--sidebar-width);
+  width: 100%;
   height: 100%;
   background: var(--bg-sidebar);
   z-index: 100;
@@ -270,6 +281,11 @@ input, textarea {
 
 /* Mobile Responsive Styling */
 @media (max-width: 768px) {
+  .chat-layout .sidebar-wrapper {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+
   .chat-layout .sidebar {
     width: 100vw !important;
     max-width: 100vw !important;
@@ -279,7 +295,7 @@ input, textarea {
     display: none !important;
   }
 
-  .chat-layout.has-selected-chat .sidebar {
+  .chat-layout.has-selected-chat .sidebar-wrapper {
     display: none !important;
   }
 
@@ -302,3 +318,4 @@ input, textarea {
     max-width: 85% !important;
   }
 }
+

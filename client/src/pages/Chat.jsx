@@ -6,7 +6,7 @@ import ChatWindow from '../components/ChatWindow/ChatWindow';
 import SettingsPanel from '../components/Settings/SettingsPanel';
 import GroupCreate from '../components/Group/GroupCreate';
 import NewChatPanel from '../components/Sidebar/NewChatPanel';
-import InvitePanel from '../components/Sidebar/InvitePanel';
+import FriendsPanel from '../components/Sidebar/FriendsPanel';
 import { useSocketContext } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import CallModal from '../components/ChatWindow/CallModal';
@@ -19,7 +19,7 @@ export default function Chat() {
   const [showSettings, setShowSettings] = useState(false);
   const [showGroupCreate, setShowGroupCreate] = useState(false);
   const [showNewChatPanel, setShowNewChatPanel] = useState(false);
-  const [showInvitePanel, setShowInvitePanel] = useState(false);
+  const [showFriendsPanel, setShowFriendsPanel] = useState(false);
   const [activeCallData, setActiveCallData] = useState(null);
 
   const location = useLocation();
@@ -47,21 +47,14 @@ export default function Chat() {
     const conv = location.state.selectConversation;
     const autoSelect = location.state.autoSelect !== false;
 
-    // Refresh full list from server first, then ensure this conv is included
-    fetchConversations().then((loadedConvs) => {
-      const alreadyIn = (loadedConvs || []).some(c => c.id === conv.id);
-
+    fetchConversations().then(() => {
       setConversations(prev => {
         if (prev.some(c => c.id === conv.id)) return prev;
         return [conv, ...prev];
       });
-
-      if (autoSelect) {
-        setSelectedConversation(conv);
-      }
+      if (autoSelect) setSelectedConversation(conv);
     });
 
-    // Clear the navigation state so page refreshes don't re-trigger
     window.history.replaceState({}, document.title);
   }, [location.state]);
 
@@ -69,12 +62,10 @@ export default function Chat() {
     if (!socket) return;
 
     const handleIncomingCall = ({ from, callerName, callerAvatar, signalData, type }) => {
-      // Auto-reject if already in a call
       if (activeCallDataRef.current) {
         socket.emit('reject_call', { targetUserId: from });
         return;
       }
-
       setActiveCallData({
         incoming: true,
         type,
@@ -89,20 +80,31 @@ export default function Chat() {
     };
 
     socket.on('incoming_call', handleIncomingCall);
+    return () => socket.off('incoming_call', handleIncomingCall);
+  }, [socket]);
 
-    return () => {
-      socket.off('incoming_call', handleIncomingCall);
+  // When a friend request is accepted, add the new conversation to the sidebar
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleFriendAccepted = ({ conversation, friendId }) => {
+      if (!conversation) return;
+      setConversations(prev => {
+        if (prev.some(c => c.id === conversation.id)) return prev;
+        return [{ ...conversation, unreadCount: 0, unread_count: 0 }, ...prev];
+      });
     };
+
+    socket.on('friend_request_accepted', handleFriendAccepted);
+    return () => socket.off('friend_request_accepted', handleFriendAccepted);
   }, [socket]);
 
   // Mark active conversation as read and reset unread badge locally
   useEffect(() => {
     if (!selectedConversation || !socket) return;
 
-    // Emit read receipt event for the whole conversation
     socket.emit('message_read', { conversationId: selectedConversation.id });
 
-    // Reset unread count locally in list immediately
     setConversations(prev =>
       prev.map(c => {
         if (c.id === selectedConversation.id) {
@@ -113,12 +115,11 @@ export default function Chat() {
     );
   }, [selectedConversation?.id, socket]);
 
-  // Real-time conversation list updates (last message preview, unread count increments)
+  // Real-time conversation list updates
   useEffect(() => {
     if (!socket) return;
 
     const handleNewMessage = (msg) => {
-      // Use ref to get the current selected conversation without stale closure
       const currentSelectedId = selectedConversationRef.current?.id;
 
       setConversations(prev => {
@@ -133,31 +134,26 @@ export default function Chat() {
           conv.last_message = msg;
           conv.last_message_time = msg.created_at;
 
-          // Only increment unread if not the active conversation and not our own message
           if (!isActive && msg.sender_id !== currentUser?.id) {
             const currentCount = conv.unreadCount || conv.unread_count || 0;
             conv.unreadCount = currentCount + 1;
             conv.unread_count = currentCount + 1;
           }
 
-          // Move the conversation to the top of the sidebar list
           updated.splice(index, 1);
           return [conv, ...updated];
         } else {
-          // If conversation isn't in the list (first message from new contact), refetch
           fetchConversations();
           return prev;
         }
       });
 
-      // If this is the active conversation and it's someone else's message, mark it read
       if (selectedConversationRef.current?.id === msg.conversation_id && msg.sender_id !== currentUser?.id) {
         socket.emit('message_read', { conversationId: msg.conversation_id });
       }
     };
 
-    const handleConversationRead = ({ conversationId, userId }) => {
-      // Clear unread badge for this conversation for the current user
+    const handleConversationRead = ({ conversationId }) => {
       setConversations(prev =>
         prev.map(c => {
           if (c.id === conversationId) {
@@ -196,6 +192,8 @@ export default function Chat() {
     });
     if (existing) {
       setSelectedConversation(existing);
+      setShowFriendsPanel(false);
+      setShowNewChatPanel(false);
     } else {
       try {
         const data = await post(`/messages/conversations/private/${user.id}`);
@@ -205,18 +203,29 @@ export default function Chat() {
           return [newConv, ...prev];
         });
         setSelectedConversation(newConv);
+        setShowFriendsPanel(false);
+        setShowNewChatPanel(false);
       } catch (err) {
         console.error('Failed to create/get private chat:', err);
       }
     }
   };
 
-  const handleSelectConversation = (conversation) => {
+  // Called when a conversation object is passed directly (e.g. from FriendsPanel accept)
+  const handleOpenConversation = (conversation) => {
+    setConversations(prev => {
+      if (prev.some(c => c.id === conversation.id)) {
+        return prev;
+      }
+      return [{ ...conversation, unreadCount: 0, unread_count: 0 }, ...prev];
+    });
     setSelectedConversation(conversation);
+    setShowFriendsPanel(false);
+    setShowNewChatPanel(false);
   };
 
-  const handleNewGroup = () => {
-    setShowGroupCreate(true);
+  const handleSelectConversation = (conversation) => {
+    setSelectedConversation(conversation);
   };
 
   const handleGroupCreated = (newGroup) => {
@@ -227,16 +236,43 @@ export default function Chat() {
 
   return (
     <div className={`chat-layout ${selectedConversation ? 'has-selected-chat' : ''}`}>
-      <Sidebar 
-        conversations={conversations} 
-        selectedId={selectedConversation?.id} 
-        onSelect={handleSelectConversation}
-        onOpenSettings={() => setShowSettings(true)}
-        onNewGroup={handleNewGroup}
-        onOpenNewChatPanel={() => setShowNewChatPanel(true)}
-        onOpenInvitePanel={() => setShowInvitePanel(true)}
-        onNewChat={startPrivateChat}
-      />
+      <div className="sidebar-wrapper">
+        <Sidebar 
+          conversations={conversations} 
+          selectedId={selectedConversation?.id} 
+          onSelect={handleSelectConversation}
+          onOpenSettings={() => setShowSettings(true)}
+          onNewGroup={() => setShowGroupCreate(true)}
+          onOpenNewChatPanel={() => setShowNewChatPanel(true)}
+          onOpenFriendsPanel={() => setShowFriendsPanel(true)}
+          onNewChat={startPrivateChat}
+        />
+
+        {/* Overlay panels — rendered inside sidebar wrapper so they slide over the sidebar */}
+        {showFriendsPanel && (
+          <FriendsPanel
+            onClose={() => setShowFriendsPanel(false)}
+            onStartChat={handleOpenConversation}
+          />
+        )}
+        {showNewChatPanel && (
+          <NewChatPanel
+            onClose={() => setShowNewChatPanel(false)}
+            onSelectUser={(user) => {
+              startPrivateChat(user);
+            }}
+          />
+        )}
+        {showGroupCreate && (
+          <GroupCreate
+            onClose={() => setShowGroupCreate(false)}
+            onSuccess={handleGroupCreated}
+          />
+        )}
+        {showSettings && (
+          <SettingsPanel onClose={() => setShowSettings(false)} />
+        )}
+      </div>
       
       <div className="chat-window-container">
         {selectedConversation ? (
@@ -262,14 +298,6 @@ export default function Chat() {
         )}
       </div>
 
-      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
-      {showGroupCreate && <GroupCreate onClose={() => setShowGroupCreate(false)} onSuccess={handleGroupCreated} />}
-      {showNewChatPanel && <NewChatPanel onClose={() => setShowNewChatPanel(false)} onSelectUser={(user) => {
-        startPrivateChat(user);
-        setShowNewChatPanel(false);
-      }} />}
-      {showInvitePanel && <InvitePanel onClose={() => setShowInvitePanel(false)} />}
-      
       {activeCallData && (
         <CallModal 
           callData={activeCallData} 

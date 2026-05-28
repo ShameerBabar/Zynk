@@ -5,7 +5,39 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
+const webpush = require('web-push');
 require('dotenv').config();
+
+// ── Web Push VAPID setup ──────────────────────────────────────────────────
+const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY  || 'BHAQXEBhzAEkRcdlz87_NSn5ATHhHGQwYi7wWWp31h_XurkwSX9Y_y-mjvSLIkuVUiJHLuSvmq_aNRqAz03hF14';
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || 'mmqmS_S5UMKMfcNpwLNDpl8_Rg1xxDrjcIvDiPc4Pgk';
+webpush.setVapidDetails('mailto:zynk@example.com', VAPID_PUBLIC, VAPID_PRIVATE);
+
+/**
+ * Send a Web Push notification to all subscriptions of a given user.
+ * @param {object} db - SQLite db instance
+ * @param {string} targetUserId
+ * @param {object} payload - { title, body, icon, tag, data }
+ */
+function sendPushToUser(db, targetUserId, payload) {
+  try {
+    const rows = db.prepare('SELECT subscription FROM push_subscriptions WHERE user_id = ?').all(targetUserId);
+    for (const row of rows) {
+      let sub;
+      try { sub = JSON.parse(row.subscription); } catch { continue; }
+      webpush.sendNotification(sub, JSON.stringify(payload)).catch(err => {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          // Subscription expired/gone — remove it
+          db.prepare('DELETE FROM push_subscriptions WHERE user_id = ? AND subscription = ?').run(targetUserId, row.subscription);
+        } else {
+          console.error('[PUSH] Send error:', err.message);
+        }
+      });
+    }
+  } catch (err) {
+    console.error('[PUSH] sendPushToUser error:', err.message);
+  }
+}
 
 const { initializeDatabase } = require('./db/schema');
 const setupSocketHandlers = require('./socket/handler');
@@ -61,8 +93,9 @@ const db = new DatabaseSync(dbPath);
 db.exec('PRAGMA journal_mode = WAL');
 initializeDatabase(db);
 
-// Make db accessible to routes
+// Make db + io accessible to routes
 app.set('db', db);
+app.set('io', io);
 
 // Mount Routes
 const authRoutes = require('./routes/auth');
@@ -71,6 +104,8 @@ const messageRoutes = require('./routes/messages');
 const groupRoutes = require('./routes/groups');
 const fileRoutes = require('./routes/files');
 const contactsRoutes = require('./routes/contacts');
+const pushRoutes = require('./routes/push');
+const friendsRoutes = require('./routes/friends');
 
 // Public route for invite links
 app.get('/api/public/user/:username', (req, res) => {
@@ -94,9 +129,11 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/contacts', contactsRoutes);
+app.use('/api/push', pushRoutes);
+app.use('/api/friends', friendsRoutes);
 
-// Setup Socket.io
-setupSocketHandlers(io, db);
+// Setup Socket.io (pass sendPushToUser so the handler can push when user is offline)
+setupSocketHandlers(io, db, sendPushToUser);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
