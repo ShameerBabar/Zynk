@@ -10,7 +10,7 @@ import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import './ChatWindow.css';
 
 export default function ChatWindow({ conversation, onClose, onStartCall }) {
-  const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage } = useMessages(conversation.id);
+  const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage, markMessagesRead, markMessagesDelivered } = useMessages(conversation.id);
   const { socket, setActiveConversationId } = useSocketContext();
   
   const [deletedForMeIds, setDeletedForMeIds] = useState(() => {
@@ -74,9 +74,30 @@ export default function ChatWindow({ conversation, onClose, onStartCall }) {
       }
     };
 
+    const handleConversationRead = ({ conversationId, userId }) => {
+      if (conversationId === conversation.id) {
+        markMessagesRead(userId);
+      }
+    };
+
+    const handleMessageDelivered = ({ messageId, conversationId, userId }) => {
+      if (conversationId === conversation.id) {
+        markMessagesDelivered([messageId], userId);
+      }
+    };
+
+    const handleMessagesDelivered = ({ conversationId, messageIds, userId }) => {
+      if (conversationId === conversation.id) {
+        markMessagesDelivered(messageIds, userId);
+      }
+    };
+
     socket.on('new_message', handleNewMessage);
     socket.on('message_deleted', handleMessageDeleted);
     socket.on('message_edited', handleMessageEdited);
+    socket.on('conversation_read', handleConversationRead);
+    socket.on('message_delivered', handleMessageDelivered);
+    socket.on('messages_delivered', handleMessagesDelivered);
     
     socket.emit('join_conversation', { conversationId: conversation.id });
 
@@ -84,8 +105,11 @@ export default function ChatWindow({ conversation, onClose, onStartCall }) {
       socket.off('new_message', handleNewMessage);
       socket.off('message_deleted', handleMessageDeleted);
       socket.off('message_edited', handleMessageEdited);
+      socket.off('conversation_read', handleConversationRead);
+      socket.off('message_delivered', handleMessageDelivered);
+      socket.off('messages_delivered', handleMessagesDelivered);
     };
-  }, [socket, conversation.id, addMessage, removeMessage]);
+  }, [socket, conversation.id, addMessage, removeMessage, updateMessage, markMessagesRead, markMessagesDelivered]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

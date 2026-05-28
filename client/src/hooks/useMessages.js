@@ -55,6 +55,20 @@ export function useMessages(conversationId) {
     setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: newContent } : m));
   }, []);
 
+  const markMessagesRead = useCallback((userId) => {
+    setMessages(prev => prev.map(m => m.sender_id !== userId ? { ...m, status: 'read' } : m));
+  }, []);
+
+  const markMessagesDelivered = useCallback((messageIds, userId) => {
+    const idSet = new Set(messageIds);
+    setMessages(prev => prev.map(m => {
+      if (idSet.has(m.id) && m.sender_id !== userId && m.status !== 'read') {
+        return { ...m, status: 'delivered' };
+      }
+      return m;
+    }));
+  }, []);
+
   return {
     messages,
     loading,
@@ -62,6 +76,8 @@ export function useMessages(conversationId) {
     loadMore: () => loadMessages(false),
     addMessage,
     removeMessage,
-    updateMessage
+    updateMessage,
+    markMessagesRead,
+    markMessagesDelivered
   };
 }

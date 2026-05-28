@@ -115,6 +115,16 @@ function initializeDatabase(db) {
       );
     `);
 
+    // ── Message Delivery Receipts ────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS message_deliveries (
+        message_id   TEXT NOT NULL,
+        user_id      TEXT NOT NULL,
+        delivered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (message_id, user_id)
+      );
+    `);
+
     // ── Indexes ──────────────────────────────────────────────────────────
     // Speed up message listing per conversation, ordered by time
     db.exec(`
@@ -148,6 +158,12 @@ function initializeDatabase(db) {
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_message_reads_message
         ON message_reads(message_id);
+    `);
+
+    // Speed up delivery-receipt queries
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_message_deliveries_message
+        ON message_deliveries(message_id);
     `);
 
     // Speed up member-to-conversation queries

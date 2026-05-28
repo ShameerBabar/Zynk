@@ -104,9 +104,11 @@ export const SocketProvider = ({ children }) => {
       });
     });
 
-    // Global listener for new messages to trigger notifications
     newSocket.on('new_message', (msg) => {
       if (msg.sender_id === user.id) return;
+
+      // Automatically acknowledge delivery
+      newSocket.emit('message_delivered', { messageId: msg.id, conversationId: msg.conversation_id });
 
       const isWindowHidden = document.visibilityState === 'hidden';
       const isDifferentConversation = msg.conversation_id !== activeConversationIdRef.current;

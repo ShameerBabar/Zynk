@@ -171,8 +171,16 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe 
         <div className="message-meta">
           <span className="message-time">{formatMessageTime(message.created_at)}</span>
           {isMine && !isDeleted && (
-            <span className="message-status" style={{ color: isSelf ? '#53bdeb' : 'inherit', opacity: isSelf ? 1 : 0.6, display: 'flex', alignItems: 'center' }}>
-              {isSelf ? (
+            <span 
+              className="message-status" 
+              style={{ 
+                color: message.status === 'read' ? '#53bdeb' : 'inherit', 
+                opacity: message.status === 'read' ? 1 : 0.6, 
+                display: 'flex', 
+                alignItems: 'center' 
+              }}
+            >
+              {message.status === 'read' || message.status === 'delivered' ? (
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                   <path d="M0.5 12l1.5-1.5L7 15 19.5 2.5l1.5 1.5L7 18z" />
                   <path d="M5.5 12l1.5-1.5L12 15 24.5 2.5l1.5 1.5L12 18z" />

@@ -47,7 +47,13 @@ router.get('/conversations', (req, res) => {
       // Get the last message in this conversation
       const lastMessage = db.prepare(`
         SELECT m.id, m.sender_id, m.content, m.type, m.file_name, m.is_deleted, m.created_at,
-               u.username AS sender_username, u.display_name AS sender_display_name
+               u.username AS sender_username, u.display_name AS sender_display_name,
+               CASE
+                 WHEN (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) = 0 THEN 'read'
+                 WHEN (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id AND user_id != m.sender_id) >= (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) THEN 'read'
+                 WHEN (SELECT COUNT(*) FROM message_deliveries WHERE message_id = m.id AND user_id != m.sender_id) >= (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) THEN 'delivered'
+                 ELSE 'sent'
+               END AS status
         FROM messages m
         JOIN users u ON u.id = m.sender_id
         WHERE m.conversation_id = ?
@@ -98,9 +104,28 @@ router.get('/conversations', (req, res) => {
         memberCount = countRow.count;
       }
 
+      let formattedLastMessage = null;
+      if (lastMessage) {
+        formattedLastMessage = {
+          id: lastMessage.id,
+          sender_id: lastMessage.sender_id,
+          content: lastMessage.content,
+          type: lastMessage.type,
+          file_name: lastMessage.file_name,
+          is_deleted: lastMessage.is_deleted,
+          created_at: lastMessage.created_at,
+          status: lastMessage.status,
+          sender: {
+            id: lastMessage.sender_id,
+            username: lastMessage.sender_username,
+            display_name: lastMessage.sender_display_name
+          }
+        };
+      }
+
       return {
         ...conv,
-        lastMessage: lastMessage || null,
+        lastMessage: formattedLastMessage,
         unreadCount: unreadCount ? unreadCount.count : 0,
         otherUser,
         memberCount,
@@ -147,7 +172,13 @@ router.get('/:conversationId', (req, res) => {
       SELECT m.id, m.conversation_id, m.sender_id, m.content, m.type,
              m.file_url, m.file_name, m.file_size, m.is_deleted, m.created_at,
              u.username AS sender_username, u.display_name AS sender_display_name,
-             u.avatar_url AS sender_avatar
+             u.avatar_url AS sender_avatar,
+             CASE
+               WHEN (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) = 0 THEN 'read'
+               WHEN (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id AND user_id != m.sender_id) >= (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) THEN 'read'
+               WHEN (SELECT COUNT(*) FROM message_deliveries WHERE message_id = m.id AND user_id != m.sender_id) >= (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) THEN 'delivered'
+               ELSE 'sent'
+             END AS status
       FROM messages m
       JOIN users u ON u.id = m.sender_id
       WHERE m.conversation_id = ?
@@ -167,6 +198,7 @@ router.get('/:conversationId', (req, res) => {
       file_size: m.file_size,
       is_deleted: m.is_deleted,
       created_at: m.created_at,
+      status: m.status,
       sender: {
         id: m.sender_id,
         username: m.sender_username,

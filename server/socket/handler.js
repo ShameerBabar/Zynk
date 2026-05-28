@@ -40,6 +40,42 @@ function setupSocketHandlers(io, db, sendPushToUser) {
       // Send current online user list to the newly connected socket
       const onlineUserIds = db.prepare(`SELECT id FROM users WHERE is_online = 1`).all().map(u => u.id);
       socket.emit('online_users', { userIds: onlineUserIds });
+
+      // Mark all undelivered messages from others in these conversations as delivered
+      const undelivered = db.prepare(`
+        SELECT m.id, m.conversation_id, m.sender_id
+        FROM messages m
+        JOIN conversation_members cm ON cm.conversation_id = m.conversation_id
+        WHERE cm.user_id = ?
+          AND m.sender_id != ?
+          AND m.is_deleted = 0
+          AND m.id NOT IN (SELECT message_id FROM message_deliveries WHERE user_id = ?)
+      `).all(userId, userId, userId);
+
+      if (undelivered.length > 0) {
+        const insertDel = db.prepare(`INSERT OR IGNORE INTO message_deliveries (message_id, user_id) VALUES (?, ?)`);
+        db.exec('BEGIN');
+        try {
+          for (const msg of undelivered) {
+            insertDel.run(msg.id, userId);
+          }
+          db.exec('COMMIT');
+        } catch (txErr) {
+          db.exec('ROLLBACK');
+          console.error('[SOCKET] Error bulk marking delivered:', txErr);
+        }
+
+        // Notify other conversation members/rooms of the delivery
+        const convGroups = {};
+        for (const msg of undelivered) {
+          if (!convGroups[msg.conversation_id]) convGroups[msg.conversation_id] = [];
+          convGroups[msg.conversation_id].push(msg.id);
+        }
+
+        for (const [convId, msgIds] of Object.entries(convGroups)) {
+          io.to(convId).emit('messages_delivered', { conversationId: convId, messageIds: msgIds, userId });
+        }
+      }
     } catch (err) {
       console.error('[SOCKET] Error on connect:', err);
     }
@@ -92,6 +128,7 @@ function setupSocketHandlers(io, db, sendPushToUser) {
           file_size: m.file_size,
           is_deleted: m.is_deleted,
           created_at: m.created_at,
+          status: 'sent',
           sender: {
             id: m.sender_id,
             username: m.sender_username,
@@ -182,6 +219,18 @@ function setupSocketHandlers(io, db, sendPushToUser) {
         }
       } catch (err) {
         console.error('[SOCKET] Error marking read:', err);
+      }
+    });
+
+    // ── Delivery Receipts ────────────────────────────────────────────────
+    socket.on('message_delivered', ({ messageId, conversationId }) => {
+      try {
+        if (messageId) {
+          db.prepare(`INSERT OR IGNORE INTO message_deliveries (message_id, user_id) VALUES (?, ?)`).run(messageId, userId);
+          io.to(conversationId).emit('message_delivered', { messageId, conversationId, userId });
+        }
+      } catch (err) {
+        console.error('[SOCKET] Error marking delivered:', err);
       }
     });
 
