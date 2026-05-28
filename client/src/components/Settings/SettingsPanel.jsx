@@ -85,7 +85,7 @@ export default function SettingsPanel({ onClose }) {
     { id: 'charcoal', color: theme === 'dark' ? '#121212' : '#f0f0f0', label: 'Charcoal' }
   ];
 
-  const appVersion = '1.0.0';
+  const appVersion = '1.1.0';
   const platformName = window.zynk?.platform || 'Web/Browser';
 
   return (
