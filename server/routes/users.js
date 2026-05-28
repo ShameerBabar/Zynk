@@ -136,11 +136,15 @@ router.post('/contacts/:id', (req, res) => {
     }
 
     // Insert both directions in a transaction
-    const addContact = db.transaction(() => {
+    db.exec('BEGIN');
+    try {
       db.prepare('INSERT INTO contacts (user_id, contact_id) VALUES (?, ?)').run(req.user.id, contactId);
       db.prepare('INSERT OR IGNORE INTO contacts (user_id, contact_id) VALUES (?, ?)').run(contactId, req.user.id);
-    });
-    addContact();
+      db.exec('COMMIT');
+    } catch (txErr) {
+      db.exec('ROLLBACK');
+      throw txErr;
+    }
 
     // Return the newly added contact's info
     const user = db.prepare(`
@@ -166,12 +170,16 @@ router.delete('/contacts/:id', (req, res) => {
     const db = req.app.get('db');
     const contactId = req.params.id;
 
-    // Remove both directions
-    const removeContact = db.transaction(() => {
+    // Remove both directions in a transaction
+    db.exec('BEGIN');
+    try {
       db.prepare('DELETE FROM contacts WHERE user_id = ? AND contact_id = ?').run(req.user.id, contactId);
       db.prepare('DELETE FROM contacts WHERE user_id = ? AND contact_id = ?').run(contactId, req.user.id);
-    });
-    removeContact();
+      db.exec('COMMIT');
+    } catch (txErr) {
+      db.exec('ROLLBACK');
+      throw txErr;
+    }
 
     console.log(`[USERS] Contact removed: ${req.user.id} ↔ ${contactId}`);
 

@@ -167,9 +167,16 @@ function setupSocketHandlers(io, db, sendPushToUser) {
           `).all(conversationId, userId, userId);
 
           const insertStmt = db.prepare(`INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)`);
-          db.transaction(() => {
-            for (const msg of unreadMessages) insertStmt.run(msg.id, userId);
-          })();
+          db.exec('BEGIN');
+          try {
+            for (const msg of unreadMessages) {
+              insertStmt.run(msg.id, userId);
+            }
+            db.exec('COMMIT');
+          } catch (txErr) {
+            db.exec('ROLLBACK');
+            throw txErr;
+          }
 
           io.to(conversationId).emit('conversation_read', { conversationId, userId });
         }
