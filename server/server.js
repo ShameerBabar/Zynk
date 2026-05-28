@@ -75,20 +75,35 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Detect HuggingFace Spaces environment (used for persistent storage paths)
+const isHFSpace = !!(process.env.SPACE_ID || process.env.HF_SPACE_ID || process.env.SPACE_AUTHOR_NAME);
+
 // Ensure upload directory exists and serve it
-const uploadsPath = process.env.UPLOADS_PATH || path.join(__dirname, 'uploads');
+// On HF Spaces, use /data/uploads so files persist across restarts
+const uploadsPath = process.env.UPLOADS_PATH
+  || (isHFSpace ? '/data/uploads' : path.join(__dirname, 'uploads'));
 if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
 }
+console.log(`[FILES] Uploads directory: ${uploadsPath}`);
 app.use('/uploads', express.static(uploadsPath));
 
-// Database setup
-const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'db', 'zynk.db');
+
+// ── Database setup ───────────────────────────────────────────────────────────
+// On HuggingFace Spaces, /data is the ONLY directory that persists across
+// restarts and deployments. Storing zynk.db anywhere else means it gets wiped
+// every time we push code, deleting all users, chats, and friends.
+//
+// Local dev falls back to ./db/zynk.db as before.
+const dbPath = process.env.DATABASE_PATH
+  || (isHFSpace ? '/data/zynk.db' : path.join(__dirname, 'db', 'zynk.db'));
+
 const dbDir = path.dirname(dbPath);
 if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
+console.log(`[DB] Using database at: ${dbPath}`);
 const db = new DatabaseSync(dbPath);
 db.exec('PRAGMA journal_mode = WAL');
 initializeDatabase(db);
