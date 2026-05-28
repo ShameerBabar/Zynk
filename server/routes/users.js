@@ -24,8 +24,9 @@ router.use(authenticate);
 
 /**
  * GET /search?q=<query>
- * Searches users by username, display_name, or phone. Excludes the current user.
- * Returns up to 20 results.
+ * Searches users by username or display_name. Excludes the current user.
+ * Case-insensitive. Handles NULL display_name gracefully.
+ * Returns up to 30 results.
  */
 router.get('/search', (req, res) => {
   try {
@@ -36,15 +37,24 @@ router.get('/search', (req, res) => {
       return res.json({ users: [] });
     }
 
-    const searchTerm = `%${q.trim()}%`;
+    // LOWER() ensures case-insensitive match even for Unicode
+    // COALESCE handles NULL display_name fields safely
+    const searchTerm = `%${q.trim().toLowerCase()}%`;
 
     const users = db.prepare(`
       SELECT id, username, phone, display_name, avatar_url, status_text, is_online, last_seen
       FROM users
       WHERE id != ?
-        AND (username LIKE ? OR display_name LIKE ? OR phone LIKE ?)
-      LIMIT 20
-    `).all(req.user.id, searchTerm, searchTerm, searchTerm);
+        AND (
+          LOWER(username) LIKE ?
+          OR LOWER(COALESCE(display_name, '')) LIKE ?
+          OR phone LIKE ?
+        )
+      ORDER BY
+        CASE WHEN LOWER(COALESCE(display_name, username)) LIKE ? THEN 0 ELSE 1 END,
+        display_name ASC
+      LIMIT 30
+    `).all(req.user.id, searchTerm, searchTerm, searchTerm, searchTerm);
 
     return res.json({ users });
   } catch (err) {
@@ -52,6 +62,7 @@ router.get('/search', (req, res) => {
     return res.status(500).json({ error: 'Internal server error during search.' });
   }
 });
+
 
 /**
  * GET /contacts
