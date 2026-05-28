@@ -4,7 +4,14 @@ import { get, post } from '../utils/api';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const cached = localStorage.getItem('zynk_user');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [token, setToken] = useState(localStorage.getItem('zynk_token'));
   const [loading, setLoading] = useState(true);
 
@@ -14,6 +21,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const userData = await get('/auth/me');
           setUser(userData.user);
+          localStorage.setItem('zynk_user', JSON.stringify(userData.user));
         } catch (err) {
           // Only clear session on genuine auth failure (expired/invalid token)
           // Don't log out on network errors (server restarting, no internet, etc.)
@@ -28,31 +36,37 @@ export const AuthProvider = ({ children }) => {
           } else {
             // Network/server error — keep token, try again later
             console.warn('[Auth] Could not verify session (network error), staying logged in:', err.message);
-            // Decode the token locally to get basic user info while offline
-            try {
-              const payload = JSON.parse(atob(token.split('.')[1]));
-              // Check if token is expired
-              if (payload.exp && payload.exp * 1000 < Date.now()) {
-                console.warn('[Auth] Token expired — logging out');
+            // If we don't have a cached user, try to decode token locally as a last resort
+            if (!localStorage.getItem('zynk_user')) {
+              try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.exp && payload.exp * 1000 < Date.now()) {
+                  console.warn('[Auth] Token expired — logging out');
+                  logout();
+                } else {
+                  const fallbackUser = { id: payload.id, username: payload.username };
+                  setUser(fallbackUser);
+                  localStorage.setItem('zynk_user', JSON.stringify(fallbackUser));
+                }
+              } catch {
                 logout();
-              } else {
-                // Token still valid locally, set minimal user data
-                setUser({ id: payload.id, username: payload.username });
               }
-            } catch {
-              logout();
             }
           }
         }
+      } else {
+        setUser(null);
+        localStorage.removeItem('zynk_user');
       }
       setLoading(false);
     };
     initAuth();
-  }, []);
+  }, [token]);
 
   const login = async (identifier, password) => {
     const data = await post('/auth/login', { identifier, password });
     localStorage.setItem('zynk_token', data.token);
+    localStorage.setItem('zynk_user', JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
     return data;
@@ -61,6 +75,7 @@ export const AuthProvider = ({ children }) => {
   const loginWithGoogle = async (idToken) => {
     const data = await post('/auth/google', { idToken });
     localStorage.setItem('zynk_token', data.token);
+    localStorage.setItem('zynk_user', JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
     return data;
@@ -69,6 +84,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     const data = await post('/auth/register', userData);
     localStorage.setItem('zynk_token', data.token);
+    localStorage.setItem('zynk_user', JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
     return data;
@@ -76,12 +92,17 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('zynk_token');
+    localStorage.removeItem('zynk_user');
     setToken(null);
     setUser(null);
   };
 
   const updateProfile = (newData) => {
-    setUser({ ...user, ...newData });
+    setUser(prev => {
+      const updated = { ...prev, ...newData };
+      localStorage.setItem('zynk_user', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   return (

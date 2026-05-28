@@ -1,11 +1,16 @@
 const jwt = require('jsonwebtoken');
 
-function setupSocketHandlers(io, db) {
+/**
+ * Socket Handler — Zynk
+ * @param {import('socket.io').Server} io
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {Function} sendPushToUser - helper from server.js to deliver Web Push
+ */
+function setupSocketHandlers(io, db, sendPushToUser) {
+  // ── Authentication middleware ────────────────────────────────────────────
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
-    if (!token) {
-      return next(new Error('Authentication error'));
-    }
+    if (!token) return next(new Error('Authentication error'));
     jwt.verify(token, process.env.JWT_SECRET || 'zynk-secret-key-change-in-production', (err, decoded) => {
       if (err) return next(new Error('Authentication error'));
       socket.user = decoded;
@@ -15,67 +20,56 @@ function setupSocketHandlers(io, db) {
 
   io.on('connection', (socket) => {
     const userId = socket.user.id;
-    
-    // Set user online
-    try {
-      const updateOnlineStmt = db.prepare(`UPDATE users SET is_online = 1 WHERE id = ?`);
-      updateOnlineStmt.run(userId);
-      
-      // Join conversation rooms
-      const getConversationsStmt = db.prepare(`SELECT conversation_id FROM conversation_members WHERE user_id = ?`);
-      const conversations = getConversationsStmt.all(userId);
-      conversations.forEach(c => {
-        socket.join(c.conversation_id);
-      });
-      
-      // Broadcast online status to contacts
-      const getContactsStmt = db.prepare(`SELECT user_id FROM contacts WHERE contact_id = ?`);
-      const contacts = getContactsStmt.all(userId);
-      contacts.forEach(contact => {
-         io.emit('user_online', { userId });
-      });
 
-      // Get all online users and send to the connecting socket
-      const getOnlineUsersStmt = db.prepare(`SELECT id FROM users WHERE is_online = 1`);
-      const onlineUserIds = getOnlineUsersStmt.all().map(u => u.id);
+    // ── On connect: mark online, join rooms, broadcast status ────────────
+    try {
+      db.prepare(`UPDATE users SET is_online = 1 WHERE id = ?`).run(userId);
+
+      // Join personal room (for direct notifications like incoming_call)
+      socket.join(userId);
+
+      // Join all conversation rooms
+      const conversations = db.prepare(
+        `SELECT conversation_id FROM conversation_members WHERE user_id = ?`
+      ).all(userId);
+      conversations.forEach(c => socket.join(c.conversation_id));
+
+      // Broadcast online status to everyone
+      io.emit('user_online', { userId });
+
+      // Send current online user list to the newly connected socket
+      const onlineUserIds = db.prepare(`SELECT id FROM users WHERE is_online = 1`).all().map(u => u.id);
       socket.emit('online_users', { userIds: onlineUserIds });
-      
     } catch (err) {
-      console.error('Error on connect:', err);
+      console.error('[SOCKET] Error on connect:', err);
     }
 
+    // ── Disconnect ───────────────────────────────────────────────────────
     socket.on('disconnect', () => {
       try {
-        const updateOfflineStmt = db.prepare(`UPDATE users SET is_online = 0, last_seen = CURRENT_TIMESTAMP WHERE id = ?`);
-        updateOfflineStmt.run(userId);
-        
+        db.prepare(`UPDATE users SET is_online = 0, last_seen = CURRENT_TIMESTAMP WHERE id = ?`).run(userId);
         io.emit('user_offline', { userId, lastSeen: new Date().toISOString() });
       } catch (err) {
-        console.error('Error on disconnect:', err);
+        console.error('[SOCKET] Error on disconnect:', err);
       }
     });
 
+    // ── Send Message ─────────────────────────────────────────────────────
     socket.on('send_message', (data) => {
       const { conversationId, content, type, fileUrl, fileName, fileSize, messageId } = data;
-      // Assume message is already saved to DB by REST API and this is just to broadcast, 
-      // OR we save it here. The prompt says "Save message to DB with uuid".
-      
       try {
-        const insertStmt = db.prepare(`
-          INSERT INTO messages (id, conversation_id, sender_id, content, type, file_url, file_name, file_size)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        const id = messageId || require('crypto').randomUUID();
-        
         // Verify sender is in conversation
-        const checkMemberStmt = db.prepare(`SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?`);
-        if (!checkMemberStmt.get(conversationId, userId)) {
-            return; // Not a member
+        if (!db.prepare(`SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?`).get(conversationId, userId)) {
+          return;
         }
 
-        insertStmt.run(id, conversationId, userId, content || null, type || 'text', fileUrl || null, fileName || null, fileSize || null);
-        
-        const getMsgStmt = db.prepare(`
+        const id = messageId || require('crypto').randomUUID();
+        db.prepare(`
+          INSERT INTO messages (id, conversation_id, sender_id, content, type, file_url, file_name, file_size)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(id, conversationId, userId, content || null, type || 'text', fileUrl || null, fileName || null, fileSize || null);
+
+        const m = db.prepare(`
           SELECT m.id, m.conversation_id, m.sender_id, m.content, m.type,
                  m.file_url, m.file_name, m.file_size, m.is_deleted, m.created_at,
                  u.username AS sender_username, u.display_name AS sender_display_name,
@@ -83,9 +77,8 @@ function setupSocketHandlers(io, db) {
           FROM messages m
           JOIN users u ON u.id = m.sender_id
           WHERE m.id = ?
-        `);
-        const m = getMsgStmt.get(id);
-        
+        `).get(id);
+
         if (!m) return;
 
         const message = {
@@ -107,12 +100,48 @@ function setupSocketHandlers(io, db) {
           }
         };
 
+        // Broadcast to all sockets in the conversation room
         io.to(conversationId).emit('new_message', message);
+
+        // ── Web Push for offline members ──────────────────────────────────
+        if (sendPushToUser) {
+          const senderName = m.sender_display_name || m.sender_username;
+          let bodyText = '';
+          if (type === 'text')       bodyText = content;
+          else if (type === 'image') bodyText = '📷 Photo';
+          else if (type === 'audio') bodyText = '🎵 Voice message';
+          else                       bodyText = '📎 File';
+
+          // Get all conversation members except the sender
+          const members = db.prepare(
+            `SELECT user_id FROM conversation_members WHERE conversation_id = ? AND user_id != ?`
+          ).all(conversationId, userId);
+
+          members.forEach(member => {
+            // Only push if they are offline (is_online = 0)
+            const targetUser = db.prepare(`SELECT is_online FROM users WHERE id = ?`).get(member.user_id);
+            if (targetUser && targetUser.is_online === 0) {
+              sendPushToUser(db, member.user_id, {
+                title: senderName,
+                body: bodyText,
+                icon: '/manifest-icon-192.png',
+                badge: '/manifest-icon-192.png',
+                tag: `msg-${conversationId}`,
+                data: {
+                  type: 'message',
+                  conversationId,
+                  url: '/'
+                }
+              });
+            }
+          });
+        }
       } catch (err) {
-        console.error('Error sending message:', err);
+        console.error('[SOCKET] Error sending message:', err);
       }
     });
 
+    // ── Typing indicators ────────────────────────────────────────────────
     socket.on('typing_start', ({ conversationId }) => {
       socket.to(conversationId).emit('user_typing', { conversationId, userId });
     });
@@ -121,83 +150,103 @@ function setupSocketHandlers(io, db) {
       socket.to(conversationId).emit('user_stop_typing', { conversationId, userId });
     });
 
+    // ── Read Receipts ────────────────────────────────────────────────────
     socket.on('message_read', ({ messageId, conversationId }) => {
       try {
         if (messageId) {
-          const insertStmt = db.prepare(`INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)`);
-          insertStmt.run(messageId, userId);
+          db.prepare(`INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)`).run(messageId, userId);
           io.to(conversationId).emit('message_read', { messageId, conversationId, userId });
         } else if (conversationId) {
-          // Mark all messages in conversation as read (sent by others, not already read by current user)
+          // Mark all unread messages from others as read
           const unreadMessages = db.prepare(`
-            SELECT id FROM messages 
-            WHERE conversation_id = ? 
-              AND sender_id != ? 
+            SELECT id FROM messages
+            WHERE conversation_id = ?
+              AND sender_id != ?
               AND is_deleted = 0
               AND id NOT IN (SELECT message_id FROM message_reads WHERE user_id = ?)
           `).all(conversationId, userId, userId);
 
           const insertStmt = db.prepare(`INSERT OR IGNORE INTO message_reads (message_id, user_id) VALUES (?, ?)`);
           db.transaction(() => {
-            for (const msg of unreadMessages) {
-              insertStmt.run(msg.id, userId);
-            }
+            for (const msg of unreadMessages) insertStmt.run(msg.id, userId);
           })();
 
           io.to(conversationId).emit('conversation_read', { conversationId, userId });
         }
       } catch (err) {
-        console.error('Error marking read:', err);
+        console.error('[SOCKET] Error marking read:', err);
       }
     });
 
+    // ── Delete Message ───────────────────────────────────────────────────
     socket.on('delete_message', ({ messageId, conversationId }) => {
       try {
-        const getMsgStmt = db.prepare(`SELECT sender_id FROM messages WHERE id = ?`);
-        const msg = getMsgStmt.get(messageId);
+        const msg = db.prepare(`SELECT sender_id FROM messages WHERE id = ?`).get(messageId);
         if (msg && msg.sender_id === userId) {
-          const delStmt = db.prepare(`UPDATE messages SET is_deleted = 1 WHERE id = ?`);
-          delStmt.run(messageId);
+          db.prepare(`UPDATE messages SET is_deleted = 1 WHERE id = ?`).run(messageId);
           io.to(conversationId).emit('message_deleted', { messageId, conversationId });
         }
       } catch (err) {
-        console.error('Error deleting message:', err);
+        console.error('[SOCKET] Error deleting message:', err);
       }
     });
 
+    // ── Edit Message ─────────────────────────────────────────────────────
     socket.on('edit_message', ({ messageId, conversationId, newContent }) => {
       try {
-        const getMsgStmt = db.prepare(`SELECT sender_id, type FROM messages WHERE id = ?`);
-        const msg = getMsgStmt.get(messageId);
+        const msg = db.prepare(`SELECT sender_id, type FROM messages WHERE id = ?`).get(messageId);
         if (msg && msg.sender_id === userId && msg.type === 'text') {
-          const editStmt = db.prepare(`UPDATE messages SET content = ? WHERE id = ?`);
-          editStmt.run(newContent, messageId);
+          db.prepare(`UPDATE messages SET content = ? WHERE id = ?`).run(newContent, messageId);
           io.to(conversationId).emit('message_edited', { messageId, conversationId, content: newContent });
         }
       } catch (err) {
-        console.error('Error editing message:', err);
+        console.error('[SOCKET] Error editing message:', err);
       }
     });
 
+    // ── Join Conversation Room ───────────────────────────────────────────
     socket.on('join_conversation', ({ conversationId }) => {
       socket.join(conversationId);
     });
 
-    // --- WebRTC Calling Events ---
+    // ── WebRTC Calling Events ────────────────────────────────────────────
     socket.on('call_user', ({ targetUserId, signalData, type }) => {
+      const callerName = socket.user.display_name || socket.user.username;
+      const callerAvatar = socket.user.avatar_url;
+
       io.to(targetUserId).emit('incoming_call', {
         from: userId,
-        callerName: socket.user.display_name || socket.user.username,
-        callerAvatar: socket.user.avatar_url,
+        callerName,
+        callerAvatar,
         signalData,
-        type // 'voice' or 'video'
+        type
       });
+
+      // ── Web Push for call if recipient is offline ─────────────────────
+      if (sendPushToUser) {
+        const targetUser = db.prepare(`SELECT is_online FROM users WHERE id = ?`).get(targetUserId);
+        if (targetUser && targetUser.is_online === 0) {
+          sendPushToUser(db, targetUserId, {
+            title: `📞 Incoming ${type === 'video' ? 'Video' : 'Voice'} Call`,
+            body: `${callerName} is calling you on Zynk`,
+            icon: '/manifest-icon-192.png',
+            badge: '/manifest-icon-192.png',
+            tag: `call-${userId}`,
+            requireInteraction: true,   // keeps notification visible until user acts
+            data: {
+              type: 'call',
+              callType: type,
+              callerId: userId,
+              callerName,
+              url: '/'
+            }
+          });
+        }
+      }
     });
 
     socket.on('accept_call', ({ targetUserId, signalData }) => {
-      io.to(targetUserId).emit('call_accepted', {
-        signalData
-      });
+      io.to(targetUserId).emit('call_accepted', { signalData });
     });
 
     socket.on('reject_call', ({ targetUserId }) => {
@@ -211,18 +260,6 @@ function setupSocketHandlers(io, db) {
     socket.on('ice_candidate', ({ targetUserId, candidate }) => {
       io.to(targetUserId).emit('ice_candidate', { candidate });
     });
-
-    socket.on('create_group', ({ name, memberIds, groupId }) => {
-       // Typically handled by REST, this event is to notify sockets
-       memberIds.forEach(id => {
-           // Not a direct way to force other sockets to join, but we can emit an event they listen to
-           // or we emit to user-specific rooms. Let's assume each user is in a room named their userId.
-           socket.join(userId); // Join own room on connect for direct notifications
-       });
-    });
-    
-    // Add user to their own room for direct notifications
-    socket.join(userId);
   });
 }
 

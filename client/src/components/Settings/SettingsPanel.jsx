@@ -17,6 +17,15 @@ export default function SettingsPanel({ onClose }) {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Re-sync form fields whenever user data arrives/changes from the server
+  // (handles the case where user was null during initial render after a refresh)
+  useEffect(() => {
+    if (user) {
+      setDisplayName(user.display_name || '');
+      setStatusText(user.status_text || '');
+    }
+  }, [user?.id, user?.display_name, user?.status_text]);
+
   const [deferredPrompt, setDeferredPrompt] = useState(window.deferredPrompt);
 
   useEffect(() => {

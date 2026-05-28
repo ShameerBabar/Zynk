@@ -6,9 +6,12 @@ node_modules/
 *.db
 *.db-journal
 *.db-wal
+*.db-shm
 server/db/*.db
 server/db/*.db-journal
 server/db/*.db-wal
+server/db/*.db-shm
+
 
 # Local environment variables
 .env

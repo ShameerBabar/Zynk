@@ -20,13 +20,16 @@ if ('serviceWorker' in navigator) {
       // Check for updates every 60 seconds while the app is open
       setInterval(() => registration.update(), 60_000);
 
-      // A new SW has installed and is waiting — tell it to activate immediately
+      // Track whether WE triggered the skipWaiting (vs browser doing it on hard refresh)
+      let swUpdateTriggered = false;
+
+      // Tell a waiting SW to activate immediately
       const activateWaitingSW = (sw) => {
+        swUpdateTriggered = true; // mark that reload is intentional
         sw.postMessage({ type: 'SKIP_WAITING' });
       };
 
       if (registration.waiting) {
-        // New SW already waiting on first load
         activateWaitingSW(registration.waiting);
       }
 
@@ -36,16 +39,16 @@ if ('serviceWorker' in navigator) {
 
         newSW.addEventListener('statechange', () => {
           if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            // New SW installed, old one still controlling — skip waiting
+            // Only auto-activate if the SW is genuinely new (not same version)
             activateWaitingSW(newSW);
           }
         });
       });
 
-      // When the SW controller changes (new SW took over), reload the page
+      // Only reload when WE triggered the update, not on Ctrl+Shift+R / manual reload
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
+        if (!refreshing && swUpdateTriggered) {
           refreshing = true;
           console.log('[SW] New version activated — reloading...');
           window.location.reload();
