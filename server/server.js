@@ -184,13 +184,16 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Detect HuggingFace Spaces environment (used for persistent storage paths)
+// Detect hosting environment for persistent storage paths
 const isHFSpace = !!(process.env.SPACE_ID || process.env.HF_SPACE_ID || process.env.SPACE_AUTHOR_NAME);
+const isRender  = !!(process.env.RENDER);
 
 // Ensure upload directory exists and serve it
-// On HF Spaces, use /data/uploads so files persist across restarts
+// Render: /var/data/uploads (persistent disk) | HF: /data/uploads | local: ./uploads
 const uploadsPath = process.env.UPLOADS_PATH
-  || (isHFSpace ? '/data/uploads' : path.join(__dirname, 'uploads'));
+  || (isRender  ? '/var/data/uploads' : null)
+  || (isHFSpace ? '/data/uploads'     : null)
+  || path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsPath)) {
   fs.mkdirSync(uploadsPath, { recursive: true });
 }
@@ -199,13 +202,13 @@ app.use('/uploads', express.static(uploadsPath));
 
 
 // ── Database setup ───────────────────────────────────────────────────────────
-// On HuggingFace Spaces, /data is the ONLY directory that persists across
-// restarts and deployments. Storing zynk.db anywhere else means it gets wiped
-// every time we push code, deleting all users, chats, and friends.
-//
-// Local dev falls back to ./db/zynk.db as before.
+// Render:     /var/data/zynk.db  (persistent disk — survives deploys)
+// HF Spaces:  /data/zynk.db     (persistent storage add-on)
+// Local dev:  ./db/zynk.db
 const dbPath = process.env.DATABASE_PATH
-  || (isHFSpace ? '/data/zynk.db' : path.join(__dirname, 'db', 'zynk.db'));
+  || (isRender  ? '/var/data/zynk.db' : null)
+  || (isHFSpace ? '/data/zynk.db'     : null)
+  || path.join(__dirname, 'db', 'zynk.db');
 
 const dbDir = path.dirname(dbPath);
 if (!fs.existsSync(dbDir)) {
@@ -216,6 +219,12 @@ console.log(`[DB] Using database at: ${dbPath}`);
 const db = new DatabaseSync(dbPath);
 db.exec('PRAGMA journal_mode = WAL');
 initializeDatabase(db);
+
+// Reset stale online flags from before the last crash/restart.
+// Without this, users who were online when the server stopped would be stuck
+// as is_online=1 forever, which breaks presence indicators and search.
+db.exec('UPDATE users SET is_online = 0, last_seen = CURRENT_TIMESTAMP');
+console.log('[DB] Cleared stale online flags on startup');
 
 // Make db + io accessible to routes
 app.set('db', db);

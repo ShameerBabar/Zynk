@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: zynk-backend
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RENDER
+        value: "true"
+    disk:
+      name: zynk-data
+      mountPath: /var/data
+      sizeGB: 1

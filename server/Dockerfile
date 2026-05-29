@@ -7,9 +7,9 @@ RUN npm install --omit=dev
 
 COPY . .
 
-EXPOSE 3001
+# Render injects PORT automatically at runtime — don't hardcode it
+EXPOSE 10000
 
-ENV PORT=3001
 ENV NODE_ENV=production
 
 CMD ["node", "server.js"]
