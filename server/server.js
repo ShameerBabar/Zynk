@@ -6,43 +6,129 @@ const { Server } = require('socket.io');
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const webpush = require('web-push');
+const fs = require('fs');
+const admin = require('firebase-admin');
 require('dotenv').config();
+
+// Initialize Firebase Admin safely
+try {
+  let serviceAccount = null;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  } else if (fs.existsSync(path.join(__dirname, 'firebase-service-account.json'))) {
+    serviceAccount = require('./firebase-service-account.json');
+  }
+
+  if (serviceAccount) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log('[FIREBASE] Admin SDK initialized successfully');
+  } else {
+    console.warn('[FIREBASE] Warning: No service account credentials found. Background notifications via FCM will be disabled.');
+  }
+} catch (err) {
+  console.error('[FIREBASE] Admin SDK initialization error:', err.message);
+}
 
 // ── Web Push VAPID setup ──────────────────────────────────────────────────
 const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY  || 'BHAQXEBhzAEkRcdlz87_NSn5ATHhHGQwYi7wWWp31h_XurkwSX9Y_y-mjvSLIkuVUiJHLuSvmq_aNRqAz03hF14';
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || 'mmqmS_S5UMKMfcNpwLNDpl8_Rg1xxDrjcIvDiPc4Pgk';
 webpush.setVapidDetails('mailto:zynk@example.com', VAPID_PUBLIC, VAPID_PRIVATE);
 
+// ── FCM Push Queue ────────────────────────────────────────────────────────
+const pushQueue = [];
+
+function processPushQueue(db) {
+  if (pushQueue.length === 0) return;
+  if (admin.apps.length === 0) {
+    console.warn('[PUSH] Firebase Admin not initialized, push notifications cannot be sent.');
+    return;
+  }
+
+  const item = pushQueue.shift();
+  const { targetUserId, payload, retries } = item;
+
+  try {
+    const tokens = db.prepare('SELECT token FROM fcm_tokens WHERE user_id = ?').all(targetUserId);
+    if (tokens.length === 0) {
+      setTimeout(() => processPushQueue(db), 10);
+      return;
+    }
+
+    let pending = tokens.length;
+    let successCount = 0;
+    let failCount = 0;
+
+    tokens.forEach(row => {
+      admin.messaging().send({
+        data: {
+          title: payload.title || 'Zynk',
+          body: payload.body || '',
+          icon: payload.icon || '/manifest-icon-192.png',
+          badge: payload.badge || '/manifest-icon-192.png',
+          tag: payload.tag || 'zynk-notification',
+          type: payload.data?.type || 'message',
+          conversationId: payload.data?.conversationId || '',
+          messageId: payload.data?.messageId || '',
+          url: payload.data?.url || '/'
+        },
+        token: row.token
+      })
+      .then((res) => {
+        successCount++;
+        pending--;
+        if (pending === 0) finish();
+      })
+      .catch((error) => {
+        failCount++;
+        pending--;
+        console.error('[PUSH] Error sending to token:', row.token, error.message);
+        
+        // Remove expired/invalid tokens from DB automatically
+        if (
+          error.code === 'messaging/invalid-registration-token' ||
+          error.code === 'messaging/registration-token-not-registered'
+        ) {
+          console.log('[PUSH] Deleting registered invalid FCM token:', row.token);
+          db.prepare('DELETE FROM fcm_tokens WHERE token = ?').run(row.token);
+        }
+        if (pending === 0) finish();
+      });
+    });
+
+    function finish() {
+      console.log(`[PUSH] Delivery report for ${targetUserId}: ${successCount} successfully sent, ${failCount} failed.`);
+      
+      // If all failed and we have retries left, retry after a delay
+      if (successCount === 0 && retries < 3) {
+        console.log(`[PUSH] Retrying notification delivery for ${targetUserId} in 3 seconds (Attempt ${retries + 1})...`);
+        setTimeout(() => {
+          pushQueue.push({ targetUserId, payload, retries: retries + 1 });
+          processPushQueue(db);
+        }, 3000);
+      } else {
+        // Process next item in the queue
+        setTimeout(() => processPushQueue(db), 10);
+      }
+    }
+
+  } catch (err) {
+    console.error('[PUSH] Process queue error:', err.message);
+    setTimeout(() => processPushQueue(db), 10);
+  }
+}
+
 /**
- * Send a Web Push notification to all subscriptions of a given user.
- * @param {object} db - SQLite db instance
- * @param {string} targetUserId
- * @param {object} payload - { title, body, icon, tag, data }
+ * Send a push notification to all FCM devices of a given user.
  */
 function sendPushToUser(db, targetUserId, payload) {
-  try {
-    const rows = db.prepare('SELECT subscription FROM push_subscriptions WHERE user_id = ?').all(targetUserId);
-    for (const row of rows) {
-      let sub;
-      try { sub = JSON.parse(row.subscription); } catch { continue; }
-      webpush.sendNotification(sub, JSON.stringify(payload)).catch(err => {
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          // Subscription expired/gone — remove it
-          db.prepare('DELETE FROM push_subscriptions WHERE user_id = ? AND subscription = ?').run(targetUserId, row.subscription);
-        } else {
-          console.error('[PUSH] Send error:', err.message);
-        }
-      });
-    }
-  } catch (err) {
-    console.error('[PUSH] sendPushToUser error:', err.message);
-  }
+  pushQueue.push({ targetUserId, payload, retries: 0 });
+  processPushQueue(db);
 }
 
 const { initializeDatabase } = require('./db/schema');
 const setupSocketHandlers = require('./socket/handler');
-
-const fs = require('fs');
 
 // Initialize Express app
 const app = express();

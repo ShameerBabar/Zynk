@@ -162,22 +162,26 @@ export default function MessageInput({ conversationId }) {
     setIsRecording(false);
   };
 
-  // Camera capture photo handler
-  const handlePhotoCapture = async (blob) => {
+  // Camera capture photo/video handler
+  const handleMediaCapture = async (blob) => {
     setShowCameraModal(false);
     setUploading(true);
     try {
-      const file = new File([blob], `photo-${Date.now()}.jpeg`, { type: 'image/jpeg' });
+      const isVideo = blob.type.startsWith('video/');
+      const ext = isVideo ? 'webm' : 'jpeg';
+      const type = isVideo ? 'video' : 'image';
+      const file = new File([blob], `${type}-${Date.now()}.${ext}`, { type: blob.type });
+      
       const uploadRes = await uploadFile(file);
       sendMessage({
         conversationId,
-        type: 'image',
+        type: type,
         fileUrl: uploadRes.url,
         fileName: uploadRes.name,
         fileSize: uploadRes.size
       });
     } catch (err) {
-      showToast('Failed to upload captured photo: ' + err.message, 'error');
+      showToast('Failed to upload captured media: ' + err.message, 'error');
     } finally {
       setUploading(false);
     }
@@ -235,7 +239,7 @@ export default function MessageInput({ conversationId }) {
       {showCameraModal && (
         <CameraCaptureModal 
           onClose={() => setShowCameraModal(false)} 
-          onCapture={handlePhotoCapture} 
+          onCapture={handleMediaCapture} 
         />
       )}
 

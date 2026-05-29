@@ -77,6 +77,14 @@
   margin-bottom: 5px;
 }
 
+.message-video video {
+  max-width: 300px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 5px;
+  background: #000;
+  display: block;
+}
+
 .message-file {
   display: flex;
   align-items: center;

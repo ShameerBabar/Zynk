@@ -72,4 +72,55 @@ router.delete('/unsubscribe', (req, res) => {
   }
 });
 
+// POST /api/push/subscribe-fcm — register/update an FCM token
+router.post('/subscribe-fcm', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const userId = req.user.id;
+    const { token, deviceType } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required.' });
+    }
+
+    // Delete token if it's already registered by any user (prevent device token duplicate overlaps)
+    db.prepare('DELETE FROM fcm_tokens WHERE token = ?').run(token);
+
+    // Generate uuid for primary key
+    const { v4: uuidv4 } = require('uuid');
+    const id = uuidv4();
+
+    db.prepare(`
+      INSERT INTO fcm_tokens (id, user_id, token, device_type, created_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).run(id, userId, token, deviceType || 'web');
+
+    console.log(`[FCM] Registered token for user ${userId}`);
+    return res.status(201).json({ message: 'FCM token registered successfully.' });
+  } catch (err) {
+    console.error('[FCM] Register token error:', err.message);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+// POST /api/push/unsubscribe-fcm — remove an FCM token
+router.post('/unsubscribe-fcm', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const userId = req.user.id;
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required.' });
+    }
+
+    db.prepare('DELETE FROM fcm_tokens WHERE token = ? AND user_id = ?').run(token, userId);
+    console.log(`[FCM] Unregistered token for user ${userId}`);
+    return res.json({ message: 'FCM token unregistered successfully.' });
+  } catch (err) {
+    console.error('[FCM] Unregister token error:', err.message);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 module.exports = router;

@@ -167,6 +167,7 @@ function setupSocketHandlers(io, db, sendPushToUser) {
                 data: {
                   type: 'message',
                   conversationId,
+                  messageId: message.id,
                   url: '/'
                 }
               });

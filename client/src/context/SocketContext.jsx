@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../utils/constants';
 import { useAuth } from './AuthContext';
+import { registerFCM, unregisterFCM } from '../utils/fcm';
 
 const SocketContext = createContext(null);
 
@@ -14,6 +15,12 @@ export const SocketProvider = ({ children }) => {
 
   const setActiveConversationId = (id) => {
     activeConversationIdRef.current = id;
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SET_ACTIVE_CONVERSATION',
+        conversationId: id
+      });
+    }
   };
 
   // Request Notification permission on mount
@@ -26,6 +33,18 @@ export const SocketProvider = ({ children }) => {
       }
     }
   }, []);
+
+  // Register FCM push token on mount/login and clean up on unmount/logout
+  useEffect(() => {
+    if (token) {
+      registerFCM(token);
+    }
+    return () => {
+      if (token) {
+        unregisterFCM(token);
+      }
+    };
+  }, [token]);
 
   const triggerNotification = (senderName, body) => {
     // 1. Electron Notification
@@ -49,10 +68,33 @@ export const SocketProvider = ({ children }) => {
     if (!token || !user) return;
 
     const newSocket = io(SOCKET_URL, {
-      auth: { token }
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      randomizationFactor: 0.5,
+      timeout: 20000
     });
 
     setSocket(newSocket);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && newSocket && newSocket.disconnected) {
+        console.log('[SOCKET] App visible and disconnected, forcing socket reconnect...');
+        newSocket.connect();
+      }
+    };
+
+    const handleOnlineStatus = () => {
+      if (newSocket && newSocket.disconnected) {
+        console.log('[SOCKET] Network online, forcing socket reconnect...');
+        newSocket.connect();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnlineStatus);
 
     newSocket.on('connect', () => {
       console.log('Socket connected:', newSocket.id);
@@ -130,6 +172,8 @@ export const SocketProvider = ({ children }) => {
     });
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnlineStatus);
       newSocket.off('new_message');
       newSocket.disconnect();
     };

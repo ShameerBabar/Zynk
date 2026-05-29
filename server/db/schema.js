@@ -205,6 +205,22 @@ function initializeDatabase(db) {
         ON push_subscriptions(user_id);
     `);
 
+    // ── FCM Tokens ────────────────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS fcm_tokens (
+        id           TEXT PRIMARY KEY,
+        user_id      TEXT NOT NULL,
+        token        TEXT UNIQUE NOT NULL,
+        device_type  TEXT DEFAULT 'web',
+        created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_fcm_tokens_user
+        ON fcm_tokens(user_id);
+    `);
+
     // ── Friend Requests ──────────────────────────────────────────────────
     db.exec(`
       CREATE TABLE IF NOT EXISTS friend_requests (

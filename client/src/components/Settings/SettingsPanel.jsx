@@ -17,6 +17,69 @@ export default function SettingsPanel({ onClose }) {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Push notification diagnostics states
+  const [notificationPermission, setNotificationPermission] = useState(
+    typeof window !== 'undefined' ? Notification.permission : 'unknown'
+  );
+  const [fcmSupported, setFcmSupported] = useState(false);
+  const [fcmToken, setFcmToken] = useState(localStorage.getItem('zynk_fcm_token') || 'None');
+  const [swState, setSwState] = useState('Checking...');
+  const [isCopied, setIsCopied] = useState(false);
+  const [reloadingToken, setReloadingToken] = useState(false);
+
+  useEffect(() => {
+    // Check FCM support
+    import('../../utils/fcm').then(m => {
+      setFcmSupported(m.isPushSupported());
+    });
+
+    // Check service worker state
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (!reg) setSwState('Not registered');
+        else if (reg.active) setSwState('Active');
+        else if (reg.waiting) setSwState('Waiting');
+        else if (reg.installing) setSwState('Installing');
+        else setSwState('Registered (Unknown)');
+      }).catch(err => setSwState('Error: ' + err.message));
+    } else {
+      setSwState('Unsupported');
+    }
+  }, []);
+
+  const handleCopyToken = () => {
+    if (fcmToken && fcmToken !== 'None') {
+      navigator.clipboard.writeText(fcmToken);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+      showToast('FCM Token copied to clipboard', 'success');
+    }
+  };
+
+  const handleReRegisterToken = async () => {
+    try {
+      setReloadingToken(true);
+      const m = await import('../../utils/fcm');
+      const token = localStorage.getItem('zynk_token');
+      if (token) {
+        const freshToken = await m.registerFCM(token);
+        if (freshToken) {
+          setFcmToken(freshToken);
+          setNotificationPermission(Notification.permission);
+          showToast('FCM Token re-registered successfully!', 'success');
+        } else {
+          showToast('FCM Registration returned null. Check permissions.', 'warning');
+        }
+      } else {
+        showToast('You are not logged in.', 'error');
+      }
+    } catch (err) {
+      showToast('Re-registration failed: ' + err.message, 'error');
+    } finally {
+      setReloadingToken(false);
+    }
+  };
+
   // Re-sync form fields whenever user data arrives/changes from the server
   // (handles the case where user was null during initial render after a refresh)
   useEffect(() => {
@@ -266,6 +329,93 @@ export default function SettingsPanel({ onClose }) {
                 {isSocketConnected ? 'Connected' : 'Offline'}
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Push Notification Diagnostics */}
+        <div style={{ paddingBottom: '10px' }}>
+          <h4 style={{ color: 'var(--text-primary)', fontSize: '15px', marginBottom: '12px', fontWeight: 600 }}>Push Notification Diagnostics</h4>
+          <div style={{ 
+            background: 'var(--bg-app)', border: '1px solid var(--border-color)', 
+            borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', 
+            gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' 
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Permission State:</span>
+              <span style={{ 
+                color: notificationPermission === 'granted' ? 'var(--online-color)' : notificationPermission === 'denied' ? 'var(--accent-danger)' : 'var(--text-primary)',
+                fontWeight: '600'
+              }}>
+                {notificationPermission.toUpperCase()}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>FCM Push Engine:</span>
+              <span style={{ 
+                color: fcmSupported ? 'var(--online-color)' : 'var(--accent-danger)',
+                fontWeight: '600'
+              }}>
+                {fcmSupported ? 'Supported (FCM)' : 'Unsupported'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Service Worker:</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>
+                {swState}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Push Token State:</span>
+              <span style={{ 
+                color: fcmToken !== 'None' ? 'var(--online-color)' : 'var(--accent-danger)',
+                fontWeight: '600'
+              }}>
+                {fcmToken !== 'None' ? 'Active' : 'Missing'}
+              </span>
+            </div>
+
+            {fcmToken !== 'None' && (
+              <div style={{ marginTop: '4px', borderTop: '1px dashed var(--border-color)', paddingTop: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span>FCM Token:</span>
+                  <button 
+                    onClick={handleCopyToken}
+                    style={{
+                      background: 'var(--bg-active)', border: 'none', color: 'var(--accent-primary)',
+                      padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    {isCopied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <div style={{
+                  fontFamily: 'monospace', fontSize: '11px', wordBreak: 'break-all',
+                  background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px',
+                  maxHeight: '60px', overflowY: 'auto', color: 'var(--text-primary)'
+                }}>
+                  {fcmToken}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleReRegisterToken}
+              disabled={reloadingToken}
+              style={{
+                marginTop: '8px', width: '100%', background: 'var(--bg-active)',
+                border: '1px solid var(--border-color)', color: 'var(--text-primary)',
+                padding: '8px', borderRadius: '6px', cursor: reloadingToken ? 'default' : 'pointer',
+                fontWeight: '600', fontSize: '12px', transition: 'background var(--transition-fast)'
+              }}
+              onMouseOver={e => !reloadingToken && (e.currentTarget.style.background = 'var(--border-light)')}
+              onMouseOut={e => !reloadingToken && (e.currentTarget.style.background = 'var(--bg-active)')}
+            >
+              {reloadingToken ? 'Re-registering...' : 'Force Re-Register Push'}
+            </button>
           </div>
         </div>
 

@@ -40,6 +40,35 @@ export default function Chat() {
     fetchConversations();
   }, []);
 
+  // Handle push notification clicks (selecting the conversation)
+  useEffect(() => {
+    const handleNotificationClick = (e) => {
+      const data = e.detail;
+      if (data && data.conversationId) {
+        const found = conversations.find(c => c.id === data.conversationId);
+        if (found) {
+          setSelectedConversation(found);
+          setShowFriendsPanel(false);
+          setShowNewChatPanel(false);
+          setShowSettings(false);
+        } else {
+          fetchConversations().then(updatedList => {
+            const freshFound = updatedList.find(c => c.id === data.conversationId);
+            if (freshFound) {
+              setSelectedConversation(freshFound);
+              setShowFriendsPanel(false);
+              setShowNewChatPanel(false);
+              setShowSettings(false);
+            }
+          });
+        }
+      }
+    };
+
+    window.addEventListener('zynk:notification-click', handleNotificationClick);
+    return () => window.removeEventListener('zynk:notification-click', handleNotificationClick);
+  }, [conversations]);
+
   // Handle navigation from InvitePage — add the conversation to sidebar if not present
   useEffect(() => {
     if (!location.state?.selectConversation) return;

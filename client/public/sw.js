@@ -17,7 +17,7 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((cacheNames) =>
       Promise.all(
-        cacheNames.filter(n => n !== CACHE_NAME).map(n => caches.delete(n))
+        cacheNames.filter(n => n.startsWith('zynk-cache-') && n !== CACHE_NAME).map(n => caches.delete(n))
       )
     )
   );
@@ -26,6 +26,29 @@ self.addEventListener('activate', (e) => {
 
 // ── Fetch (network-first for HTML, stale-while-revalidate for assets) ────────
 self.addEventListener('fetch', (e) => {
+  // Capture authentication token and API base url for background delivery receipts
+  const authHeader = e.request.headers.get('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    e.waitUntil(
+      caches.open('zynk-auth').then(cache => cache.put('https://zynk-token.local/token', new Response(token)))
+    );
+  }
+  if (e.request.url.includes('/api/')) {
+    try {
+      const urlObj = new URL(e.request.url);
+      const apiIdx = urlObj.pathname.indexOf('/api');
+      if (apiIdx !== -1) {
+        const apiBase = urlObj.origin + urlObj.pathname.substring(0, apiIdx + 4);
+        e.waitUntil(
+          caches.open('zynk-auth').then(cache => cache.put('https://zynk-token.local/api-base', new Response(apiBase)))
+        );
+      }
+    } catch (err) {
+      console.warn('[SW] Error parsing api url:', err);
+    }
+  }
+
   if (
     e.request.mode === 'navigate' ||
     (e.request.headers.get('accept') && e.request.headers.get('accept').includes('text/html'))
@@ -63,21 +86,40 @@ self.addEventListener('push', (e) => {
   try {
     payload = e.data.json();
   } catch {
-    payload = { title: 'Zynk', body: e.data.text() };
+    payload = { data: { title: 'Zynk', body: e.data.text() } };
   }
 
-  const title   = payload.title   || 'Zynk';
+  // Parse payload (supports standard structures and nested FCM data block)
+  const data = payload.data || {};
+  const title = data.title || payload.title || 'Zynk';
+  const body = data.body || payload.body || 'You have a new notification';
+  const icon = data.icon || payload.icon || '/manifest-icon-192.png';
+  const badge = data.badge || payload.badge || '/manifest-icon-192.png';
+  const tag = data.tag || payload.tag || 'zynk-notification';
+  const type = data.type || payload.type || 'message';
+  const conversationId = data.conversationId || payload.conversationId || '';
+  const messageId = data.messageId || payload.messageId || '';
+  
+  const reqInteraction = data.requireInteraction === 'true' || 
+                         data.requireInteraction === true || 
+                         payload.requireInteraction === true;
+
   const options = {
-    body:             payload.body             || 'You have a new notification',
-    icon:             payload.icon             || '/manifest-icon-192.png',
-    badge:            payload.badge            || '/manifest-icon-192.png',
-    tag:              payload.tag              || 'zynk-notification',
-    requireInteraction: payload.requireInteraction || false,
-    vibrate:          [200, 100, 200],
-    data:             payload.data             || { url: '/' },
-    actions: payload.data?.type === 'call'
+    body,
+    icon,
+    badge,
+    tag,
+    requireInteraction: reqInteraction,
+    vibrate: [200, 100, 200],
+    data: {
+      type,
+      conversationId,
+      messageId,
+      url: data.url || payload.url || '/'
+    },
+    actions: type === 'call'
       ? [
-          { action: 'open', title: '📱 Open Zynk' },
+          { action: 'open', title: '📱 Answer Call' },
           { action: 'dismiss', title: '✕ Dismiss' }
         ]
       : [
@@ -86,7 +128,65 @@ self.addEventListener('push', (e) => {
         ]
   };
 
-  e.waitUntil(self.registration.showNotification(title, options));
+  // 1. Mark delivered silent in the background
+  let reportDeliveryPromise = Promise.resolve();
+  if (messageId && conversationId) {
+    reportDeliveryPromise = caches.open('zynk-auth').then(async (cache) => {
+      const tokenRes = await cache.match('https://zynk-token.local/token');
+      const apiRes = await cache.match('https://zynk-token.local/api-base');
+      if (!tokenRes || !apiRes) {
+        throw new Error('No cached credentials found for background delivery receipt');
+      }
+      const token = await tokenRes.text();
+      const apiBase = await apiRes.text();
+
+      return fetch(`${apiBase}/messages/delivered-silent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ messageId, conversationId })
+      });
+    }).then(res => {
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      console.log('[SW] Delivery acknowledged for:', messageId);
+    }).catch(err => {
+      console.warn('[SW] Could not report delivery receipt in background:', err.message);
+    });
+  }
+
+  // 2. Determine whether to show the notification (Prevent duplicate when chat is active)
+  const showNotificationPromise = caches.open('zynk-auth').then(async (cache) => {
+    const activeConvRes = await cache.match('https://zynk-token.local/active-conv');
+    const activeConv = activeConvRes ? await activeConvRes.text() : null;
+
+    return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      let shouldShow = true;
+
+      // Always show incoming call notifications to prevent missed calls
+      if (type !== 'call') {
+        for (const client of windowClients) {
+          // If app window is visible, focused, and viewing this exact conversation, suppress notification
+          if (client.visibilityState === 'visible' && client.focused && activeConv === conversationId) {
+            shouldShow = false;
+            break;
+          }
+        }
+      }
+
+      if (shouldShow) {
+        return self.registration.showNotification(title, options);
+      }
+    });
+  });
+
+  e.waitUntil(
+    Promise.all([
+      showNotificationPromise,
+      reportDeliveryPromise
+    ])
+  );
 });
 
 // ── Notification Click ────────────────────────────────────────────────────────

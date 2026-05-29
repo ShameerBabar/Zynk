@@ -360,4 +360,35 @@ router.post('/conversations/private/:userId', (req, res) => {
   }
 });
 
+/**
+ * POST /delivered-silent
+ * Allows service worker or background tasks to acknowledge message delivery.
+ */
+router.post('/delivered-silent', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const userId = req.user.id;
+    const { messageId, conversationId } = req.body;
+
+    if (!messageId || !conversationId) {
+      return res.status(400).json({ error: 'Missing messageId or conversationId' });
+    }
+
+    // Insert delivery receipt in DB
+    db.prepare(`INSERT OR IGNORE INTO message_deliveries (message_id, user_id) VALUES (?, ?)`).run(messageId, userId);
+
+    // Emit socket event to notify online sender/others in real-time
+    const io = req.app.get('io');
+    if (io) {
+      io.to(conversationId).emit('message_delivered', { messageId, conversationId, userId });
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('[MESSAGES] delivered-silent error:', err.message);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
+
