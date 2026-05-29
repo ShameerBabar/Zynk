@@ -29,8 +29,8 @@ try {
   console.warn('[FCM] Firebase messaging is not supported in this browser:', err.message);
 }
 
-// Custom VAPID key from Firebase console
-const FCM_VAPID_KEY = import.meta.env.VITE_FCM_VAPID_KEY || 'BNK92nOq5wP6iHhIskLhV_TzS0W8zQ0ZkQJ6v8W1Fh-6vYw8h-9mK6wO5x_Y-Z_L0e_T0y_Q-f_F_y_e_d_a_V_E_k'; 
+// VAPID key from Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
+const FCM_VAPID_KEY = import.meta.env.VITE_FCM_VAPID_KEY || 'BLCG3IUXgSpeZUO3yD38_Wz7zr6FrxbksxcJ4dOhPehSKS5Y1Tt-q6uCiTd_zL3w_2k9YMoe9x_HicMvm66FZqA';
 
 /**
  * Check if the browser supports push notifications/FCM
