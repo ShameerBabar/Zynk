@@ -8,6 +8,7 @@ export default function Login() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('zynk_remember') === 'true');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { login, loginWithGoogle } = useAuth();
@@ -15,6 +16,14 @@ export default function Login() {
   const location = useLocation();
   const from = location.state?.from || '/';
   const googleBtnRef = useRef(null);
+
+  // Pre-fill username if Remember Me was previously checked
+  useEffect(() => {
+    if (localStorage.getItem('zynk_remember') === 'true') {
+      const saved = localStorage.getItem('zynk_saved_identifier');
+      if (saved) setIdentifier(saved);
+    }
+  }, []);
 
   const handleGoogleLoginSuccess = async (response) => {
     setLoading(true);
@@ -64,7 +73,15 @@ export default function Login() {
     setError('');
 
     try {
-      await login(identifier, password);
+      await login(identifier, password, rememberMe);
+      // Save remember me preference and identifier for next visit
+      if (rememberMe) {
+        localStorage.setItem('zynk_remember', 'true');
+        localStorage.setItem('zynk_saved_identifier', identifier);
+      } else {
+        localStorage.removeItem('zynk_remember');
+        localStorage.removeItem('zynk_saved_identifier');
+      }
       showToast('Logged in successfully', 'success');
       navigate(from);
     } catch (err) {
@@ -135,8 +152,13 @@ export default function Login() {
           </div>
 
           <div className="form-options">
-            <label className="remember-me">
-              <input type="checkbox" /> Remember me
+            <label className="remember-me" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={e => setRememberMe(e.target.checked)}
+              />
+              Remember me
             </label>
           </div>
 

@@ -6,13 +6,16 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
-      const cached = localStorage.getItem('zynk_user');
+      const cached = localStorage.getItem('zynk_user') || sessionStorage.getItem('zynk_user');
       return cached ? JSON.parse(cached) : null;
     } catch {
       return null;
     }
   });
-  const [token, setToken] = useState(localStorage.getItem('zynk_token'));
+  // Token can be in localStorage (remember me) or sessionStorage (session only)
+  const [token, setToken] = useState(
+    localStorage.getItem('zynk_token') || sessionStorage.getItem('zynk_token')
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -65,10 +68,13 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, [token]);
 
-  const login = async (identifier, password) => {
+  const login = async (identifier, password, rememberMe = false) => {
     const data = await post('/auth/login', { identifier, password });
-    localStorage.setItem('zynk_token', data.token);
-    localStorage.setItem('zynk_user', JSON.stringify(data.user));
+    // rememberMe=true  → localStorage  (survives browser close)
+    // rememberMe=false → sessionStorage (cleared when tab/browser closes)
+    const store = rememberMe ? localStorage : sessionStorage;
+    store.setItem('zynk_token', data.token);
+    store.setItem('zynk_user', JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
     return data;
@@ -95,6 +101,8 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('zynk_token');
     localStorage.removeItem('zynk_user');
+    sessionStorage.removeItem('zynk_token');
+    sessionStorage.removeItem('zynk_user');
     setToken(null);
     setUser(null);
   };
