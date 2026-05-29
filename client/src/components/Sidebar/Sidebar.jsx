@@ -15,24 +15,47 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
   const [notifState, setNotifState] = useState('unknown'); // 'unknown' | 'enabled' | 'disabled' | 'unsupported'
   const [notifLoading, setNotifLoading] = useState(false);
 
-  // Determine current notification status on mount
-  useEffect(() => {
+  // Sync bell state with real permission + FCM token state
+  const syncNotifState = () => {
     if (!('Notification' in window) || !('serviceWorker' in navigator)) {
       setNotifState('unsupported');
       return;
     }
     if (Notification.permission === 'denied') {
       setNotifState('disabled');
-    } else if (Notification.permission === 'granted') {
-      // Check if actually subscribed
-      navigator.serviceWorker.ready.then(reg =>
-        reg.pushManager.getSubscription()
-      ).then(sub => {
-        setNotifState(sub ? 'enabled' : 'disabled');
-      });
-    } else {
-      setNotifState('disabled'); // default = not yet asked
+      return;
     }
+    if (Notification.permission === 'granted') {
+      // Active only if we also have an FCM token stored
+      const hasFcmToken = !!localStorage.getItem('zynk_fcm_token');
+      setNotifState(hasFcmToken ? 'enabled' : 'disabled');
+    } else {
+      setNotifState('disabled'); // 'default' = not yet asked
+    }
+  };
+
+  useEffect(() => {
+    syncNotifState();
+
+    // Listen for FCM register/unregister events fired by fcm.js
+    const onPushStateChanged = (e) => {
+      setNotifState(e.detail.active ? 'enabled' : 'disabled');
+    };
+    window.addEventListener('zynk:push-state-changed', onPushStateChanged);
+
+    // Listen for browser permission changes (when user answers the prompt)
+    let permStatus = null;
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'notifications' }).then(status => {
+        permStatus = status;
+        status.onchange = syncNotifState;
+      }).catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener('zynk:push-state-changed', onPushStateChanged);
+      if (permStatus) permStatus.onchange = null;
+    };
   }, []);
 
   // Handle bell click — toggle push notifications

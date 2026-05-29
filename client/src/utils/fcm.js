@@ -95,13 +95,17 @@ export async function registerFCM(authToken) {
 
       console.log('[FCM] Successfully registered token on backend');
       localStorage.setItem('zynk_fcm_token', token);
+      // Notify the rest of the app (e.g. the bell icon) that push is now active
+      window.dispatchEvent(new CustomEvent('zynk:push-state-changed', { detail: { active: true } }));
       return token;
     } else {
       console.warn('[FCM] No registration token available.');
+      window.dispatchEvent(new CustomEvent('zynk:push-state-changed', { detail: { active: false } }));
       return null;
     }
   } catch (err) {
     console.error('[FCM] Registration failed:', err);
+    window.dispatchEvent(new CustomEvent('zynk:push-state-changed', { detail: { active: false } }));
     return null;
   }
 }
@@ -127,6 +131,8 @@ export async function unregisterFCM(authToken) {
       console.log('[FCM] Unregistered token from backend');
     }
     localStorage.removeItem('zynk_fcm_token');
+    // Notify the rest of the app that push is now inactive
+    window.dispatchEvent(new CustomEvent('zynk:push-state-changed', { detail: { active: false } }));
   } catch (err) {
     console.error('[FCM] Unregistration error:', err);
   }
