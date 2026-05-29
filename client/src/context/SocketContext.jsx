@@ -34,15 +34,26 @@ export const SocketProvider = ({ children }) => {
     }
   }, []);
 
-  // Register FCM push token on mount/login and clean up on unmount/logout
+  // Register FCM push token on mount/login and clean up on unmount/logout.
+  // If registration fails on first attempt (e.g. stale subscription), retry once
+  // after 4 seconds automatically — users never need to click anything manually.
   useEffect(() => {
-    if (token) {
-      registerFCM(token);
-    }
-    return () => {
-      if (token) {
-        unregisterFCM(token);
+    if (!token) return;
+    let retryTimer = null;
+
+    const attemptRegister = async (isRetry = false) => {
+      const result = await registerFCM(token);
+      if (!result && !isRetry) {
+        console.log('[FCM] First registration attempt failed, retrying in 4s...');
+        retryTimer = setTimeout(() => attemptRegister(true), 4000);
       }
+    };
+
+    attemptRegister();
+
+    return () => {
+      if (retryTimer) clearTimeout(retryTimer);
+      unregisterFCM(token);
     };
   }, [token]);
 

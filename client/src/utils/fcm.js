@@ -56,11 +56,24 @@ export async function registerFCM(authToken) {
     }
 
     const registration = await navigator.serviceWorker.ready;
+
+    // Clear any stale push subscription from a previous/different VAPID key.
+    // Without this, getToken() silently fails when the old subscription
+    // was created with a different key (e.g. the old placeholder key).
+    try {
+      const existingSub = await registration.pushManager.getSubscription();
+      if (existingSub) {
+        await existingSub.unsubscribe();
+        console.log('[FCM] Cleared stale push subscription before re-registering.');
+      }
+    } catch (subErr) {
+      console.warn('[FCM] Could not clear old subscription:', subErr.message);
+    }
     
-    // Request token using the custom service worker registration
+    // Request a fresh FCM token with the correct VAPID key
     const token = await getToken(messaging, {
       serviceWorkerRegistration: registration,
-      vapidKey: FCM_VAPID_KEY || undefined
+      vapidKey: FCM_VAPID_KEY
     });
 
     if (token) {
@@ -81,8 +94,6 @@ export async function registerFCM(authToken) {
       }
 
       console.log('[FCM] Successfully registered token on backend');
-      
-      // Save token locally for debug/diagnostics UI
       localStorage.setItem('zynk_fcm_token', token);
       return token;
     } else {
