@@ -201,6 +201,30 @@ export default function ChatWindow({ conversation, onClose, onStartCall }) {
             </button>
           </div>
         )}
+        {!isPrivate && onStartGroupCall && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              onClick={() => onStartGroupCall('voice')}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              className="hover-bg"
+              title="Group Voice Call"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M6.62 10.79a15.149 15.149 0 0 0 6.59 6.59l2.2-2.2c.28-.28.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+              </svg>
+            </button>
+            <button
+              onClick={() => onStartGroupCall('video')}
+              style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              className="hover-bg"
+              title="Group Video Call"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
       
       <div className="messages-area">

@@ -326,7 +326,159 @@ function setupSocketHandlers(io, db, sendPushToUser) {
     socket.on('ice_candidate', ({ targetUserId, candidate }) => {
       io.to(targetUserId).emit('ice_candidate', { candidate });
     });
+
+    // ── GROUP CALLS (WebRTC Mesh via Socket.IO signaling) ─────────────────
+    // In-memory store: groupId → { type, participants: Map<userId, userInfo> }
+    // Declared once per server process (shared across all connections)
+    if (!io._groupCalls) io._groupCalls = new Map();
+    const groupCalls = io._groupCalls;
+    const GROUP_CALL_MAX = 8;
+
+    // Helper: get user info from DB
+    const getCallUserInfo = (uid) => {
+      const u = db.prepare('SELECT id, display_name, username, avatar_url FROM users WHERE id = ?').get(uid);
+      return u || { id: uid, display_name: 'Unknown', username: 'unknown', avatar_url: null };
+    };
+
+    // Helper: clean up a participant from a call room
+    const leaveGroupCall = (groupId, uid) => {
+      const call = groupCalls.get(groupId);
+      if (!call) return;
+      call.participants.delete(uid);
+      if (call.participants.size === 0) {
+        groupCalls.delete(groupId);
+        console.log(`[CALL] Group call ended in ${groupId}`);
+      } else {
+        io.to(groupId).emit('group_call_participant_left', { userId: uid });
+        console.log(`[CALL] ${uid} left group call in ${groupId}, ${call.participants.size} remaining`);
+      }
+    };
+
+    // Start a group call (caller)
+    socket.on('group_call_start', ({ groupId, callType }) => {
+      try {
+        // Check user is in the group
+        const isMember = db.prepare(
+          'SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?'
+        ).get(groupId, userId);
+        if (!isMember) return;
+
+        // Check group size limit
+        const existing = groupCalls.get(groupId);
+        if (existing && existing.participants.size >= GROUP_CALL_MAX) {
+          socket.emit('group_call_full', { max: GROUP_CALL_MAX });
+          return;
+        }
+
+        // Create or join room
+        if (!groupCalls.has(groupId)) {
+          groupCalls.set(groupId, { type: callType, participants: new Map() });
+        }
+        const call = groupCalls.get(groupId);
+        const callerInfo = getCallUserInfo(userId);
+        call.participants.set(userId, callerInfo);
+
+        // Tell caller: call started, here are existing participants (empty on first start)
+        const existingParticipants = [...call.participants.entries()]
+          .filter(([uid]) => uid !== userId)
+          .map(([, info]) => info);
+        socket.emit('group_call_ready', { groupId, callType, participants: existingParticipants });
+
+        // Notify all group members of the incoming call
+        const groupName = db.prepare('SELECT name FROM conversations WHERE id = ?').get(groupId)?.name || 'Group';
+        const members = db.prepare(
+          'SELECT user_id FROM conversation_members WHERE conversation_id = ?'
+        ).all(groupId);
+        members.forEach(({ user_id }) => {
+          if (user_id !== userId) {
+            io.to(user_id).emit('group_call_incoming', {
+              groupId,
+              groupName,
+              callType,
+              callerInfo,
+            });
+          }
+        });
+
+        console.log(`[CALL] ${userId} started group ${callType} call in ${groupId}`);
+      } catch (err) {
+        console.error('[CALL] group_call_start error:', err);
+      }
+    });
+
+    // Join an existing group call
+    socket.on('group_call_join', ({ groupId }) => {
+      try {
+        const isMember = db.prepare(
+          'SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?'
+        ).get(groupId, userId);
+        if (!isMember) return;
+
+        const call = groupCalls.get(groupId);
+        if (!call) {
+          socket.emit('group_call_not_found', { groupId });
+          return;
+        }
+        if (call.participants.size >= GROUP_CALL_MAX) {
+          socket.emit('group_call_full', { max: GROUP_CALL_MAX });
+          return;
+        }
+
+        const joinerInfo = getCallUserInfo(userId);
+        call.participants.set(userId, joinerInfo);
+
+        // Tell joiner: here are the existing participants — they'll create offers to each
+        const existingParticipants = [...call.participants.entries()]
+          .filter(([uid]) => uid !== userId)
+          .map(([, info]) => info);
+        socket.emit('group_call_ready', {
+          groupId,
+          callType: call.type,
+          participants: existingParticipants,
+        });
+
+        // Tell existing participants: new peer joined, they should create offers to them
+        socket.to(groupId).emit('group_call_participant_joined', {
+          groupId,
+          userInfo: joinerInfo,
+        });
+
+        console.log(`[CALL] ${userId} joined group call in ${groupId}, total: ${call.participants.size}`);
+      } catch (err) {
+        console.error('[CALL] group_call_join error:', err);
+      }
+    });
+
+    // Leave a group call
+    socket.on('group_call_leave', ({ groupId }) => {
+      leaveGroupCall(groupId, userId);
+    });
+
+    // Also clean up if socket disconnects mid-call
+    socket.on('disconnect', () => {
+      for (const [groupId] of groupCalls) {
+        if (groupCalls.get(groupId)?.participants.has(userId)) {
+          leaveGroupCall(groupId, userId);
+        }
+      }
+    });
+
+    // Relay WebRTC offer to a specific peer
+    socket.on('group_call_offer', ({ groupId, targetUserId, offer }) => {
+      io.to(targetUserId).emit('group_call_offer', { groupId, fromUserId: userId, offer });
+    });
+
+    // Relay WebRTC answer to a specific peer
+    socket.on('group_call_answer', ({ groupId, targetUserId, answer }) => {
+      io.to(targetUserId).emit('group_call_answer', { groupId, fromUserId: userId, answer });
+    });
+
+    // Relay ICE candidate to a specific peer
+    socket.on('group_call_ice', ({ groupId, targetUserId, candidate }) => {
+      io.to(targetUserId).emit('group_call_ice', { groupId, fromUserId: userId, candidate });
+    });
   });
 }
 
 module.exports = setupSocketHandlers;
+

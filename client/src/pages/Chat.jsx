@@ -10,6 +10,7 @@ import FriendsPanel from '../components/Sidebar/FriendsPanel';
 import { useSocketContext } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import CallModal from '../components/ChatWindow/CallModal';
+import GroupCallModal from '../components/ChatWindow/GroupCallModal';
 
 export default function Chat() {
   const { socket } = useSocketContext();
@@ -21,6 +22,8 @@ export default function Chat() {
   const [showNewChatPanel, setShowNewChatPanel] = useState(false);
   const [showFriendsPanel, setShowFriendsPanel] = useState(false);
   const [activeCallData, setActiveCallData] = useState(null);
+  const [activeGroupCall, setActiveGroupCall] = useState(null);
+  const [incomingGroupCall, setIncomingGroupCall] = useState(null);
 
   const location = useLocation();
 
@@ -35,6 +38,11 @@ export default function Chat() {
   useEffect(() => {
     activeCallDataRef.current = activeCallData;
   }, [activeCallData]);
+
+  const activeGroupCallRef = useRef(activeGroupCall);
+  useEffect(() => {
+    activeGroupCallRef.current = activeGroupCall;
+  }, [activeGroupCall]);
 
   useEffect(() => {
     fetchConversations();
@@ -129,8 +137,26 @@ export default function Chat() {
       }
     };
 
+    const handleIncomingGroupCall = ({ groupId, groupName, callType, callerInfo }) => {
+      if (activeGroupCallRef.current) return;
+      setIncomingGroupCall({ groupId, groupName, callType, callerInfo });
+      
+      if (document.visibilityState === 'hidden') {
+        if (window.zynk && typeof window.zynk.sendNotification === 'function') {
+          window.zynk.sendNotification(
+            `📞 Incoming Group ${callType === 'video' ? 'Video' : 'Voice'} Call`,
+            `${callerInfo.display_name || 'Someone'} started a call in ${groupName}`
+          );
+        }
+      }
+    };
+
     socket.on('incoming_call', handleIncomingCall);
-    return () => socket.off('incoming_call', handleIncomingCall);
+    socket.on('group_call_incoming', handleIncomingGroupCall);
+    return () => {
+      socket.off('incoming_call', handleIncomingCall);
+      socket.off('group_call_incoming', handleIncomingGroupCall);
+    };
   }, [socket]);
 
   // When a friend request is accepted, add the new conversation to the sidebar
@@ -342,6 +368,12 @@ export default function Chat() {
               type,
               incoming: false
             })}
+            onStartGroupCall={(type) => setActiveGroupCall({
+              groupId: selectedConversation.id,
+              groupName: selectedConversation.name,
+              callType: type,
+              isInitiator: true
+            })}
           />
         ) : (
           <div className="flex-center" style={{ width: '100%', height: '100%', flexDirection: 'column', background: 'var(--bg-chat)', backgroundImage: 'var(--chat-pattern)' }}>
@@ -361,6 +393,47 @@ export default function Chat() {
           callData={activeCallData} 
           onCallEnd={() => setActiveCallData(null)} 
         />
+      )}
+
+      {activeGroupCall && (
+        <GroupCallModal
+          groupId={activeGroupCall.groupId}
+          groupName={activeGroupCall.groupName}
+          callType={activeGroupCall.callType}
+          isInitiator={activeGroupCall.isInitiator}
+          onEnd={() => setActiveGroupCall(null)}
+        />
+      )}
+
+      {incomingGroupCall && !activeGroupCall && (
+        <div style={{
+          position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--bg-active)', border: '1px solid var(--border-light)',
+          padding: '16px 24px', borderRadius: '12px', zIndex: 9998, boxShadow: 'var(--shadow-lg)',
+          display: 'flex', alignItems: 'center', gap: '20px', color: 'var(--text-primary)'
+        }}>
+          <div>
+            <div style={{ fontWeight: 'bold' }}>{incomingGroupCall.callerInfo?.display_name || 'Someone'} started a group {incomingGroupCall.callType} call</div>
+            <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>in {incomingGroupCall.groupName}</div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={() => setIncomingGroupCall(null)}
+              style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--bg-chat)', color: 'var(--text-primary)', cursor: 'pointer' }}
+            >
+              Dismiss
+            </button>
+            <button 
+              onClick={() => {
+                setIncomingGroupCall(null);
+                setActiveGroupCall({ ...incomingGroupCall, isInitiator: false });
+              }}
+              style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--online-color)', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              Join
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
