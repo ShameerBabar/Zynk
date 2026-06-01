@@ -279,9 +279,17 @@ export default function Chat() {
   };
 
   const handleGroupCreated = (newGroup) => {
+    // Normalize to match the conversation list format
+    const normalized = {
+      ...newGroup,
+      members: newGroup.members || [],
+      memberCount: (newGroup.members || []).filter(m => m.id !== 'system').length,
+      lastMessage: null,
+      unreadCount: 0,
+    };
     setShowGroupCreate(false);
-    setConversations(prev => [newGroup, ...prev]);
-    setSelectedConversation(newGroup);
+    setConversations(prev => [normalized, ...prev]);
+    setSelectedConversation(normalized);
   };
 
   return (

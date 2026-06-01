@@ -139,7 +139,18 @@ export default function ChatWindow({ conversation, onClose, onStartCall }) {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontWeight: 500, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>{name}</span>
             <span style={{ fontSize: 'var(--fs-xs)', color: isOnline ? 'var(--online-color)' : 'var(--text-secondary)' }}>
-              {isPrivate ? (isSelf ? 'Message yourself' : (isOnline ? 'online' : formatLastSeen(activeUser?.last_seen))) : `${conversation.member_count || 0} members`}
+              {isPrivate ? (isSelf ? 'Message yourself' : (isOnline ? 'online' : formatLastSeen(activeUser?.last_seen))) : (() => {
+                const members = conversation.members || [];
+                const onlineCount = members.filter(m => m.is_online).length;
+                const names = members.map(m => m.display_name || m.username).join(', ');
+                const count = conversation.memberCount || members.length || 0;
+                return (
+                  <span title={names}>
+                    {count} member{count !== 1 ? 's' : ''}
+                    {onlineCount > 0 && <span style={{color: 'var(--online-color)'}}> · {onlineCount} online</span>}
+                  </span>
+                );
+              })()}
             </span>
           </div>
         </div>

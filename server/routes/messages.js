@@ -95,13 +95,19 @@ router.get('/conversations', (req, res) => {
         }
       }
 
-      // For group chats, get member count
+      // For group chats, get member count + member list (for header display)
       let memberCount = 0;
+      let members = [];
       if (conv.type === 'group') {
-        const countRow = db.prepare(
-          'SELECT COUNT(*) AS count FROM conversation_members WHERE conversation_id = ?'
-        ).get(conv.id);
-        memberCount = countRow.count;
+        const memberRows = db.prepare(`
+          SELECT u.id, u.display_name, u.username, u.avatar_url, u.is_online
+          FROM conversation_members cm
+          JOIN users u ON u.id = cm.user_id
+          WHERE cm.conversation_id = ? AND u.id != 'system'
+          ORDER BY cm.role DESC, u.display_name ASC
+        `).all(conv.id);
+        members = memberRows;
+        memberCount = memberRows.length;
       }
 
       let formattedLastMessage = null;
@@ -129,6 +135,7 @@ router.get('/conversations', (req, res) => {
         unreadCount: unreadCount ? unreadCount.count : 0,
         otherUser,
         memberCount,
+        members,
       };
     });
 
