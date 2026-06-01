@@ -1,6 +1,7 @@
 import { API_BASE } from './constants';
 
-const getToken = () => localStorage.getItem('zynk_token');
+// Token may be in localStorage (Remember Me ON) or sessionStorage (Remember Me OFF)
+const getToken = () => localStorage.getItem('zynk_token') || sessionStorage.getItem('zynk_token');
 
 export async function apiRequest(endpoint, options = {}) {
   const token = getToken();
