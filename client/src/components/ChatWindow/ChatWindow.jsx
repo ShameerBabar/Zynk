@@ -10,7 +10,7 @@ import { formatDateSeparator, formatLastSeen, parseTimestamp } from '../../utils
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import './ChatWindow.css';
 
-export default function ChatWindow({ conversation, onClose, onStartCall }) {
+export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall }) {
   const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage, markMessagesRead, markMessagesDelivered } = useMessages(conversation.id);
   const { socket, setActiveConversationId } = useSocketContext();
   
