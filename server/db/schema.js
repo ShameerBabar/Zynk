@@ -249,6 +249,16 @@ function initializeDatabase(db) {
     throw err;
   }
 
+  // Ensure the reserved 'system' user exists — required because messages.sender_id
+  // has a FK to users.id, and system messages (group created, member added, etc.)
+  // use sender_id = 'system'. Without this row, group creation crashes.
+  db.exec(`PRAGMA foreign_keys = OFF`);
+  db.exec(`
+    INSERT OR IGNORE INTO users (id, username, phone, password_hash, display_name, status_text)
+    VALUES ('system', 'system', '+00000000000', 'system-reserved', 'Zynk', 'System')
+  `);
+  db.exec(`PRAGMA foreign_keys = ON`);
+
   console.log('[DB] Schema initialized successfully');
 }
 
