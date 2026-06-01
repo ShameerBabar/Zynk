@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useMessages } from '../../hooks/useMessages';
 import { useSocketContext } from '../../context/SocketContext';
 import { getFileUrl } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
 import MessageInput from './MessageInput';
 import MessageBubble from './MessageBubble';
+import GroupInfoPanel from '../Group/GroupInfoPanel';
 import { formatDateSeparator, formatLastSeen, parseTimestamp } from '../../utils/formatTime';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import './ChatWindow.css';
@@ -20,6 +21,9 @@ export default function ChatWindow({ conversation, onClose, onStartCall }) {
       return [];
     }
   });
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  // Local members state so adding members updates the panel live
+  const [groupMembers, setGroupMembers] = useState(conversation.members || []);
 
   const handleDeleteForMe = (messageId) => {
     setDeletedForMeIds(prev => {
@@ -40,6 +44,23 @@ export default function ChatWindow({ conversation, onClose, onStartCall }) {
       }
     };
   }, [conversation.id, setActiveConversationId]);
+
+  // Keep groupMembers in sync when conversation prop changes
+  useEffect(() => {
+    setGroupMembers(conversation.members || []);
+  }, [conversation.id]);
+
+  // Real-time: update member list when someone is added
+  useEffect(() => {
+    if (!socket || conversation.type !== 'group') return;
+    const handler = ({ groupId, members }) => {
+      if (groupId === conversation.id) {
+        setGroupMembers((members || []).filter(m => m.id !== 'system'));
+      }
+    };
+    socket.on('group_member_added', handler);
+    return () => socket.off('group_member_added', handler);
+  }, [socket, conversation.id, conversation.type]);
   
   const { user: currentUser } = useAuth();
   const isPrivate = conversation.type === 'private';
@@ -136,17 +157,19 @@ export default function ChatWindow({ conversation, onClose, onStartCall }) {
           <div className="user-avatar-mini" style={{ width: '40px', height: '40px', marginRight: '15px' }}>
             {avatar ? <img src={avatar} /> : <div className="avatar-placeholder">{name?.[0]?.toUpperCase()}</div>}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{ display: 'flex', flexDirection: 'column', cursor: isPrivate ? 'default' : 'pointer' }}
+            onClick={!isPrivate ? () => setShowGroupInfo(true) : undefined}
+            title={!isPrivate ? 'Click to view group info' : undefined}
+          >
             <span style={{ fontWeight: 500, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>{name}</span>
             <span style={{ fontSize: 'var(--fs-xs)', color: isOnline ? 'var(--online-color)' : 'var(--text-secondary)' }}>
               {isPrivate ? (isSelf ? 'Message yourself' : (isOnline ? 'online' : formatLastSeen(activeUser?.last_seen))) : (() => {
-                const members = conversation.members || [];
-                const onlineCount = members.filter(m => m.is_online).length;
-                const names = members.map(m => m.display_name || m.username).join(', ');
-                const count = conversation.memberCount || members.length || 0;
+                const onlineCount = groupMembers.filter(m => m.is_online).length;
+                const names = groupMembers.map(m => m.display_name || m.username).join(', ');
                 return (
                   <span title={names}>
-                    {count} member{count !== 1 ? 's' : ''}
+                    {groupMembers.length} member{groupMembers.length !== 1 ? 's' : ''}
                     {onlineCount > 0 && <span style={{color: 'var(--online-color)'}}> · {onlineCount} online</span>}
                   </span>
                 );
@@ -207,6 +230,14 @@ export default function ChatWindow({ conversation, onClose, onStartCall }) {
       </div>
       
       <MessageInput conversationId={conversation.id} />
+
+      {showGroupInfo && (
+        <GroupInfoPanel
+          conversation={{ ...conversation, members: groupMembers }}
+          onClose={() => setShowGroupInfo(false)}
+          onMembersUpdated={setGroupMembers}
+        />
+      )}
     </div>
   );
 }

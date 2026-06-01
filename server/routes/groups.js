@@ -250,9 +250,12 @@ router.post('/:id/members', (req, res) => {
       return res.status(404).json({ error: 'Group not found.' });
     }
 
-    // Check admin privileges
-    if (!isGroupAdmin(db, groupId, req.user.id)) {
-      return res.status(403).json({ error: 'Only admins can add members.' });
+    // Check requester is a group member (any member can add others)
+    const isMember = db.prepare(
+      'SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?'
+    ).get(groupId, req.user.id);
+    if (!isMember) {
+      return res.status(403).json({ error: 'You must be a member of this group to add others.' });
     }
 
     if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
@@ -293,15 +296,26 @@ db.exec('ROLLBACK');
 throw err;
 }
 
-    // Return updated member list
+    // Return updated member list (excluding system user)
     const members = db.prepare(`
       SELECT u.id, u.username, u.display_name, u.avatar_url, u.is_online, cm.role
       FROM conversation_members cm
       JOIN users u ON u.id = cm.user_id
-      WHERE cm.conversation_id = ?
+      WHERE cm.conversation_id = ? AND u.id != 'system'
     `).all(groupId);
 
     console.log(`[GROUPS] Members added to ${groupId}: ${addedMembers.join(', ')}`);
+
+    // Emit real-time events so the system messages appear live
+    const io = req.app.get('io');
+    if (io && addedMembers.length > 0) {
+      // Notify the entire group room that new members were added
+      io.to(groupId).emit('group_member_added', { groupId, members, addedMembers });
+      // Tell each new member's socket to join the group room
+      addedMembers.forEach(newMemberId => {
+        io.to(newMemberId).emit('group_joined', { groupId, group: { id: groupId, name: group.name, type: 'group', members } });
+      });
+    }
 
     return res.json({ members, addedMembers });
   } catch (err) {

@@ -90,6 +90,15 @@ function setupSocketHandlers(io, db, sendPushToUser) {
       }
     });
 
+    // ── Group Joined (new member added via REST) ──────────────────────────
+    // The REST POST /:id/members route emits 'group_joined' to the new member's
+    // personal room. This handler makes their socket join the group's IO room
+    // so they immediately receive future messages without reconnecting.
+    socket.on('group_joined', ({ groupId }) => {
+      socket.join(groupId);
+      console.log(`[SOCKET] ${userId} joined group room ${groupId}`);
+    });
+
     // ── Send Message ─────────────────────────────────────────────────────
     socket.on('send_message', (data) => {
       const { conversationId, content, type, fileUrl, fileName, fileSize, messageId } = data;
