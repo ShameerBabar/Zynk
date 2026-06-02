@@ -24,14 +24,18 @@ const router = express.Router();
 router.use(authenticate);
 
 // ── Ensure the uploads directory exists ────────────────────────────────────
-// On HF Spaces, /data persists across restarts; the app directory does not.
+// On HF Spaces or Render, use persistent data paths across restarts; the app directory does not persist.
 const isHFSpace = !!(process.env.SPACE_ID || process.env.HF_SPACE_ID || process.env.SPACE_AUTHOR_NAME);
+const isRender  = !!(process.env.RENDER);
+
 const uploadsDir = process.env.UPLOADS_PATH
-  || (isHFSpace ? '/data/uploads' : path.join(__dirname, '..', 'uploads'));
+  || (isRender  ? '/var/data/uploads' : null)
+  || (isHFSpace ? '/data/uploads' : null)
+  || path.join(__dirname, '..', 'uploads');
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-
 
 // ── General file storage configuration ─────────────────────────────────────
 const generalStorage = multer.diskStorage({
