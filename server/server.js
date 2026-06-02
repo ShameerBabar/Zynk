@@ -257,6 +257,15 @@ app.get('/api/public/user/:username', (req, res) => {
 });
 
 
+// Debug endpoint
+app.get('/api/public/debug/uploads', (req, res) => {
+  try {
+    const files = fs.readdirSync(uploadsPath);
+    res.json({ uploadsPath, files, isRender, isHFSpace });
+  } catch (err) {
+    res.status(500).json({ error: err.message, uploadsPath });
+  }
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

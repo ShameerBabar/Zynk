@@ -20,6 +20,17 @@ function createWindow() {
     }
   });
 
+  // Automatically allow all permissions including camera and microphone
+  const session = mainWindow.webContents.session;
+  
+  session.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(true);
+  });
+
+  session.setPermissionCheckHandler((webContents, permission) => {
+    return true;
+  });
+
   // Load app
   const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
   if (isDev) {

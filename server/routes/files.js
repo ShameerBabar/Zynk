@@ -90,6 +90,15 @@ const avatarUpload = multer({
   },
 });
 
+router.get('/debug', (req, res) => {
+  try {
+    const files = fs.readdirSync(uploadsDir);
+    res.json({ uploadsDir, files });
+  } catch (err) {
+    res.status(500).json({ error: err.message, uploadsDir });
+  }
+});
+
 /**
  * POST /upload
  * Upload a general file (any type, up to 500 MB).
