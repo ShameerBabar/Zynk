@@ -148,11 +148,16 @@ function initializeDatabase(db) {
         allow_change   INTEGER DEFAULT 1,
         is_closed      INTEGER DEFAULT 0,
         expires_at     DATETIME,
+        outcome_notified INTEGER DEFAULT 0,
         FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
       );
     `);
 
     // ── Poll Options ─────────────────────────────────────────────────────
+    try {
+      db.exec('ALTER TABLE polls ADD COLUMN outcome_notified INTEGER DEFAULT 0');
+    } catch (e) {}
+
     db.exec(`
       CREATE TABLE IF NOT EXISTS poll_options (
         id         TEXT PRIMARY KEY,

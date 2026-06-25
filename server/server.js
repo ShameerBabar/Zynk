@@ -281,6 +281,69 @@ app.use('/api/polls', pollsRoutes);
 // Setup Socket.io (pass sendPushToUser so the handler can push when user is offline)
 setupSocketHandlers(io, db, sendPushToUser);
 
+// Background job: Check for expired polls and notify the creator
+setInterval(() => {
+  try {
+    const expiredPolls = db.prepare(`
+      SELECT p.*, m.sender_id, m.conversation_id 
+      FROM polls p
+      JOIN messages m ON m.id = p.message_id
+      WHERE p.expires_at <= datetime('now')
+        AND p.outcome_notified = 0
+    `).all();
+
+    for (const poll of expiredPolls) {
+      db.prepare('UPDATE polls SET outcome_notified = 1 WHERE id = ?').run(poll.id);
+
+      const votes = db.prepare('SELECT option_id, COUNT(*) as count FROM poll_votes WHERE poll_id = ? GROUP BY option_id').all(poll.id);
+      const options = db.prepare('SELECT * FROM poll_options WHERE poll_id = ?').all(poll.id);
+
+      let maxVotes = -1;
+      let winningOptionIds = [];
+      votes.forEach(v => {
+        if (v.count > maxVotes) {
+          maxVotes = v.count;
+          winningOptionIds = [v.option_id];
+        } else if (v.count === maxVotes) {
+          winningOptionIds.push(v.option_id);
+        }
+      });
+
+      let bodyText = `Your poll "${poll.question}" has ended with no votes.`;
+      if (maxVotes > 0) {
+        const winningTexts = options.filter(o => winningOptionIds.includes(o.id)).map(o => o.text);
+        if (winningTexts.length === 1) {
+          bodyText = `Your poll "${poll.question}" has ended! Winner: ${winningTexts[0]} (${maxVotes} votes).`;
+        } else {
+          bodyText = `Your poll "${poll.question}" has ended in a tie between: ${winningTexts.join(', ')} (${maxVotes} votes each).`;
+        }
+      }
+
+      const payload = {
+        title: 'Poll Ended',
+        body: bodyText,
+        data: {
+          type: 'poll_outcome',
+          conversationId: poll.conversation_id,
+          messageId: poll.message_id,
+          url: `/chat/${poll.conversation_id}`
+        }
+      };
+
+      // Notify via Socket if online
+      const user = db.prepare('SELECT is_online FROM users WHERE id = ?').get(poll.sender_id);
+      if (user && user.is_online === 1) {
+        io.to(poll.sender_id).emit('notification', payload);
+      }
+      
+      // Notify via Push Notification
+      sendPushToUser(db, poll.sender_id, payload);
+    }
+  } catch (err) {
+    console.error('[POLL-CRON] Error:', err.message);
+  }
+}, 10000);
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);

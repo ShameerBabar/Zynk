@@ -175,11 +175,17 @@ export const SocketProvider = ({ children }) => {
           bodyText = '📷 Photo';
         } else if (msg.type === 'audio') {
           bodyText = '🎵 Voice message';
+        } else if (msg.type === 'poll') {
+          bodyText = '📊 Poll';
         } else {
           bodyText = '📎 File';
         }
         triggerNotification(senderName, bodyText);
       }
+    });
+
+    newSocket.on('notification', (payload) => {
+      triggerNotification(payload.title, payload.body);
     });
 
     return () => {
