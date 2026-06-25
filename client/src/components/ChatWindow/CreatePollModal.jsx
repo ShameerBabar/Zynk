@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, Settings, BarChart2 } from 'lucide-react';
+import { X, Plus, Trash2, Settings, BarChart2, Clock } from 'lucide-react';
 import './CreatePollModal.css';
 
 function CreatePollModal({ isOpen, onClose, onSubmit }) {
@@ -10,6 +10,7 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [allowChange, setAllowChange] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [expiresIn, setExpiresIn] = useState('0'); // '0' means no expiration
 
   if (!isOpen) return null;
 
@@ -36,12 +37,15 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
     e.preventDefault();
     const validOptions = options.filter(opt => opt.trim() !== '');
     if (question.trim() && validOptions.length >= 2) {
+      const expiresInMs = expiresIn === '0' ? null : parseInt(expiresIn) * 1000;
+      
       onSubmit({
         question: question.trim(),
         options: validOptions,
         allowMultiple,
         isAnonymous,
-        allowChange
+        allowChange,
+        expiresInMs
       });
       // Reset state after submit
       setQuestion('');
@@ -50,6 +54,7 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
       setIsAnonymous(false);
       setAllowChange(true);
       setShowSettings(false);
+      setExpiresIn('0');
     }
   };
 
@@ -191,6 +196,28 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
                       />
                       <span className="slider round"></span>
                     </label>
+                  </div>
+                  
+                  <div className="setting-divider"></div>
+                  
+                  <div className="setting-row">
+                    <div className="setting-info">
+                      <span className="setting-label" style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                        <Clock size={14} /> Poll Expiration
+                      </span>
+                      <span className="setting-desc">When should this poll end?</span>
+                    </div>
+                    <select 
+                      className="premium-select"
+                      value={expiresIn}
+                      onChange={(e) => setExpiresIn(e.target.value)}
+                    >
+                      <option value="0">Never</option>
+                      <option value="3600">1 Hour</option>
+                      <option value="21600">6 Hours</option>
+                      <option value="86400">24 Hours</option>
+                      <option value="604800">1 Week</option>
+                    </select>
                   </div>
                 </motion.div>
               )}
