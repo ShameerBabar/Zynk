@@ -170,3 +170,48 @@
   margin-left: -6px;
   z-index: 1;
 }
+/* Sent Message Bubble Overrides */
+.message-bubble.sent .poll-question,
+.message-bubble.sent .poll-option-text,
+.message-bubble.sent .poll-option-percent,
+.message-bubble.sent .poll-footer,
+.message-bubble.sent .poll-icon,
+.message-bubble.sent .voted-icon,
+.message-bubble.sent .poll-meta-bullet {
+  color: #ffffff;
+}
+
+.message-bubble.sent .poll-option-percent,
+.message-bubble.sent .poll-footer,
+.message-bubble.sent .poll-meta-bullet {
+  opacity: 0.85;
+}
+
+.message-bubble.sent .poll-option-fill {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.message-bubble.sent .poll-option-fill.winning {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.message-bubble.sent .poll-option.voted .poll-option-fill {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.message-bubble.sent .poll-icon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.message-bubble.sent .poll-option {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.message-bubble.sent .poll-option.interactive:hover {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.message-bubble.sent .poll-avatar-img,
+.message-bubble.sent .poll-avatar-more {
+  border-color: var(--bg-msg-sent);
+}
