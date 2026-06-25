@@ -3,6 +3,7 @@ import { get, post, put, del, uploadAvatar } from '../../utils/api';
 import { showToast } from '../Common/Toast';
 import { getFileUrl } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
+import { useSocketContext } from '../../context/SocketContext';
 
 export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated, onUpdateConversation }) {
   const { user: currentUser } = useAuth();
@@ -14,6 +15,7 @@ export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated
   const [adding, setAdding] = useState(false);
   const [activeTab, setActiveTab] = useState('members'); // 'members' or 'media'
   const [mediaList, setMediaList] = useState([]);
+  const { socket } = useSocketContext();
 
   // Edit Mode
   const [isEditing, setIsEditing] = useState(false);
@@ -39,6 +41,17 @@ export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated
       });
     }
   }, [activeTab, conversation.id]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleNewMessage = (msg) => {
+      if (msg.conversation_id === conversation.id && msg.file_url) {
+        setMediaList(prev => [msg, ...prev]);
+      }
+    };
+    socket.on('new_message', handleNewMessage);
+    return () => socket.off('new_message', handleNewMessage);
+  }, [socket, conversation.id]);
 
   const handleSearch = async (e) => {
     const q = e.target.value;
