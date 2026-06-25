@@ -200,24 +200,31 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
                   
                   <div className="setting-divider"></div>
                   
-                  <div className="setting-row">
+                  <div className="setting-row expiration-row">
                     <div className="setting-info">
                       <span className="setting-label" style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
                         <Clock size={14} /> Poll Expiration
                       </span>
                       <span className="setting-desc">When should this poll end?</span>
                     </div>
-                    <select 
-                      className="premium-select"
-                      value={expiresIn}
-                      onChange={(e) => setExpiresIn(e.target.value)}
-                    >
-                      <option value="0">Never</option>
-                      <option value="3600">1 Hour</option>
-                      <option value="21600">6 Hours</option>
-                      <option value="86400">24 Hours</option>
-                      <option value="604800">1 Week</option>
-                    </select>
+                    <div className="expiration-pills">
+                      {[
+                        { label: 'Never', value: '0' },
+                        { label: '1H', value: '3600' },
+                        { label: '6H', value: '21600' },
+                        { label: '24H', value: '86400' },
+                        { label: '1W', value: '604800' }
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={`expiration-pill ${expiresIn === opt.value ? 'active' : ''}`}
+                          onClick={() => setExpiresIn(opt.value)}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </motion.div>
               )}
