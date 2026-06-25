@@ -72,13 +72,17 @@
 }
 
 .message-image img {
-  max-width: 300px;
+  max-width: min(100%, 350px);
+  height: auto;
   border-radius: var(--radius-sm);
   margin-bottom: 5px;
+  display: block;
+  object-fit: contain;
 }
 
 .message-video video {
-  max-width: 300px;
+  max-width: min(100%, 350px);
+  height: auto;
   border-radius: var(--radius-sm);
   margin-bottom: 5px;
   background: #000;
