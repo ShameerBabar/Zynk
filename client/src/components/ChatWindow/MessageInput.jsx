@@ -10,7 +10,7 @@ import { showToast } from '../Common/Toast';
 import { post } from '../../utils/api';
 import './MessageInput.css';
 
-export default function MessageInput({ conversationId }) {
+export default function MessageInput({ conversationId, isBlocked = false }) {
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -241,6 +241,18 @@ export default function MessageInput({ conversationId }) {
       showToast(err.message, 'error');
     }
   };
+
+  // Show blocked banner instead of input
+  if (isBlocked) {
+    return (
+      <div className="message-input-container" style={{ justifyContent: 'center', gap: '8px' }}>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style={{ color: '#ef4444', flexShrink: 0 }}>
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.68L5.68 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.68L18.32 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/>
+        </svg>
+        <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>You blocked this contact. Tap their name to unblock.</span>
+      </div>
+    );
+  }
 
   return (
     <div className="message-input-container" style={{ position: 'relative' }}>

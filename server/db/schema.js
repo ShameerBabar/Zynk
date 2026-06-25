@@ -300,6 +300,22 @@ function initializeDatabase(db) {
         ON friend_requests(sender_id, status);
     `);
 
+    // ── Blocked Users ─────────────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS blocked_users (
+        blocker_id TEXT NOT NULL,
+        blocked_id TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (blocker_id, blocked_id),
+        FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (blocked_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_blocked_users_blocker
+        ON blocked_users(blocker_id);
+    `);
+
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');

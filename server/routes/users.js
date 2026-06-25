@@ -267,4 +267,62 @@ router.put('/profile', (req, res) => {
   }
 });
 
+
+/**
+ * GET /:userId/block
+ * Check whether current user has blocked the given user.
+ */
+router.get('/:userId/block', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const blocked = !!db.prepare(
+      'SELECT 1 FROM blocked_users WHERE blocker_id = ? AND blocked_id = ?'
+    ).get(req.user.id, req.params.userId);
+    return res.json({ blocked });
+  } catch (err) {
+    console.error('[USERS] Check block error:', err.message);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+/**
+ * POST /:userId/block
+ * Block a user. Idempotent.
+ */
+router.post('/:userId/block', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const targetId = req.params.userId;
+    if (targetId === req.user.id) {
+      return res.status(400).json({ error: 'You cannot block yourself.' });
+    }
+    db.prepare(
+      'INSERT OR IGNORE INTO blocked_users (blocker_id, blocked_id) VALUES (?, ?)'
+    ).run(req.user.id, targetId);
+    console.log(`[USERS] ${req.user.id} blocked ${targetId}`);
+    return res.json({ blocked: true });
+  } catch (err) {
+    console.error('[USERS] Block error:', err.message);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+/**
+ * DELETE /:userId/block
+ * Unblock a user.
+ */
+router.delete('/:userId/block', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    db.prepare(
+      'DELETE FROM blocked_users WHERE blocker_id = ? AND blocked_id = ?'
+    ).run(req.user.id, req.params.userId);
+    console.log(`[USERS] ${req.user.id} unblocked ${req.params.userId}`);
+    return res.json({ blocked: false });
+  } catch (err) {
+    console.error('[USERS] Unblock error:', err.message);
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 module.exports = router;

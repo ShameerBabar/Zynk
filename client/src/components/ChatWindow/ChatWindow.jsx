@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import MessageInput from './MessageInput';
 import MessageBubble from './MessageBubble';
 import GroupInfoPanel from '../Group/GroupInfoPanel';
+import UserInfoPanel from './UserInfoPanel';
 import { formatLastSeen, parseTimestamp, formatDateSeparator } from '../../utils/formatTime';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { useTheme } from '../../context/ThemeContext';
@@ -25,6 +26,8 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     }
   });
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [showUserInfo, setShowUserInfo] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   // Local members state so adding members updates the panel live
   const [groupMembers, setGroupMembers] = useState(conversation.members || []);
 
@@ -186,9 +189,9 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
             {avatar ? <img src={avatar} /> : <div className="avatar-placeholder">{name?.[0]?.toUpperCase()}</div>}
           </div>
           <div
-            style={{ display: 'flex', flexDirection: 'column', cursor: isPrivate ? 'default' : 'pointer' }}
-            onClick={!isPrivate ? () => setShowGroupInfo(true) : undefined}
-            title={!isPrivate ? 'Click to view group info' : undefined}
+            style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+            onClick={() => isPrivate && !isSelf ? setShowUserInfo(true) : !isPrivate ? setShowGroupInfo(true) : undefined}
+            title={isPrivate && !isSelf ? 'Click to view contact info' : !isPrivate ? 'Click to view group info' : undefined}
           >
             <span style={{ fontWeight: 500, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>{name}</span>
             <span style={{ fontSize: 'var(--fs-xs)', color: isOnline ? 'var(--online-color)' : 'var(--text-secondary)' }}>
@@ -283,13 +286,24 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
         <div ref={messagesEndRef} />
       </div>
       
-      <MessageInput conversationId={conversation.id} />
+      <MessageInput conversationId={conversation.id} isBlocked={isBlocked} />
 
       {showGroupInfo && (
         <GroupInfoPanel
           conversation={{ ...conversation, members: groupMembers }}
           onClose={() => setShowGroupInfo(false)}
           onMembersUpdated={setGroupMembers}
+          messages={messages}
+        />
+      )}
+
+      {showUserInfo && isPrivate && !isSelf && (
+        <UserInfoPanel
+          conversation={conversation}
+          otherUser={activeUser}
+          onClose={() => setShowUserInfo(false)}
+          onMuteChange={() => {}}
+          onBlockChange={(blocked) => setIsBlocked(blocked)}
           messages={messages}
         />
       )}
