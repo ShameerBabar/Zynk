@@ -2,46 +2,47 @@ import { useState, useCallback, useEffect } from 'react';
 import { get } from '../utils/api';
 import { MESSAGES_PER_PAGE } from '../utils/constants';
 
-export function useMessages(conversationId) {
+export function useMessages(conversationId, targetMessageId = null) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(0);
+  const [offset, setOffset] = useState(0);
 
   const loadMessages = useCallback(async (reset = false) => {
     if (!conversationId) return;
     if (!reset && (!hasMore || loading)) return;
     
     setLoading(true);
-    const currentPage = reset ? 0 : page;
+    const currentOffset = reset ? 0 : offset;
     
     try {
-      const data = await get(`/messages/${conversationId}?offset=${currentPage * MESSAGES_PER_PAGE}`);
+      let url = `/messages/${conversationId}?offset=${currentOffset}`;
+      if (reset && targetMessageId) {
+        url = `/messages/${conversationId}?targetMessageId=${targetMessageId}`;
+      }
+      const data = await get(url);
       
       setHasMore(data.hasMore);
       setMessages(prev => reset ? data.messages : [...prev, ...data.messages]);
       
-      if (reset) {
-        setPage(1);
-      } else {
-        setPage(prev => prev + 1);
-      }
+      // Update offset based on backend response (in case backend calculated a new offset for targetMessageId)
+      setOffset(data.offset + data.limit);
     } catch (err) {
       console.error('Failed to load messages', err);
     } finally {
       setLoading(false);
     }
-  }, [conversationId, page, hasMore, loading]);
+  }, [conversationId, targetMessageId, offset, hasMore, loading]);
 
   // Initial load when conversation changes
   useEffect(() => {
     setMessages([]);
-    setPage(0);
+    setOffset(0);
     setHasMore(true);
     if (conversationId) {
       loadMessages(true);
     }
-  }, [conversationId]); // We intentionally do not include loadMessages in deps to avoid loops
+  }, [conversationId, targetMessageId]); // Load again if targetMessageId changes
 
   const addMessage = useCallback((message) => {
     setMessages(prev => [...prev, message]);

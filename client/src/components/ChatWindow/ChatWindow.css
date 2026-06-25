@@ -91,3 +91,20 @@
 [data-wallpaper='custom'] .chat-window::before {
   display: none;
 }
+
+@keyframes highlight-pulse {
+  0% {
+    background-color: transparent;
+  }
+  20% {
+    background-color: rgba(var(--accent-primary-rgb), 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.message-highlight-pulse {
+  animation: highlight-pulse 2s ease-out;
+  border-radius: 8px;
+}

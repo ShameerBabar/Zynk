@@ -12,10 +12,11 @@ import { useTheme } from '../../context/ThemeContext';
 import './ChatWindow.css';
 
 export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall }) {
-  const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered } = useMessages(conversation.id);
+  const targetMessageId = conversation.targetMessageId;
+  const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered } = useMessages(conversation.id, targetMessageId);
   const { socket, setActiveConversationId } = useSocketContext();
   const { wallpaper } = useTheme();
-  
+
   const [deletedForMeIds, setDeletedForMeIds] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('zynk_deleted_for_me') || '[]');
@@ -141,15 +142,25 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   }, [socket, conversation.id, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered]);
 
   const scrollToBottom = (behavior = 'auto') => {
-    // Use a small timeout to allow the DOM to render the latest messages before scrolling
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
     }, 50);
   };
 
   useEffect(() => {
-    scrollToBottom('auto');
-  }, [messages.length, conversation.id]);
+    if (targetMessageId && messages.some(m => m.id === targetMessageId)) {
+      setTimeout(() => {
+        const el = document.getElementById(`message-${targetMessageId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('message-highlight-pulse');
+          setTimeout(() => el.classList.remove('message-highlight-pulse'), 2000);
+        }
+      }, 100);
+    } else if (!targetMessageId) {
+      scrollToBottom('auto');
+    }
+  }, [messages.length, conversation.id, targetMessageId]);
 
   const customBgStyle = (wallpaper === 'custom' && currentUser?.chat_background_url)
     ? { backgroundImage: `url(${getFileUrl(currentUser.chat_background_url)})`, backgroundSize: 'cover', backgroundPosition: 'center' }

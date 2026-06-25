@@ -301,8 +301,19 @@ export default function Chat() {
     setShowNewChatPanel(false);
   };
 
-  const handleSelectConversation = (conversation) => {
-    setSelectedConversation(conversation);
+  const handleSelectConversation = (convOrId, targetMessageId = null) => {
+    let conv = convOrId;
+    if (typeof convOrId === 'string') {
+      conv = conversations.find(c => c.id === convOrId);
+      if (!conv) {
+        // If it's a completely unknown conversation (unlikely if they are a member), we'd need to fetch it.
+        // For now, we assume it's in the list.
+        return;
+      }
+    }
+    
+    // Attach the targetMessageId to the conversation object so ChatWindow can read it
+    setSelectedConversation({ ...conv, targetMessageId });
   };
 
   const handleGroupCreated = (newGroup) => {

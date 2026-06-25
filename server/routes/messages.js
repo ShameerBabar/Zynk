@@ -237,8 +237,19 @@ router.get('/:conversationId', (req, res) => {
   try {
     const db = req.app.get('db');
     const { conversationId } = req.params;
-    const offset = parseInt(req.query.offset, 10) || 0;
+    let offset = parseInt(req.query.offset, 10) || 0;
     const limit = 50;
+    const targetMessageId = req.query.targetMessageId;
+
+    if (targetMessageId && req.query.offset === undefined) {
+      // Find the offset of the target message
+      const targetMessage = db.prepare('SELECT created_at FROM messages WHERE id = ? AND conversation_id = ?').get(targetMessageId, conversationId);
+      if (targetMessage) {
+        const newerCount = db.prepare('SELECT COUNT(*) AS count FROM messages WHERE conversation_id = ? AND created_at > ? AND is_deleted = 0').get(conversationId, targetMessage.created_at);
+        // Calculate the page start offset so the target message is in the returned set
+        offset = Math.max(0, newerCount.count - 10); // leave 10 newer messages, and the rest older
+      }
+    }
 
     // Verify the user is a member of this conversation
     const membership = db.prepare(

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocketContext } from '../../context/SocketContext';
-import SearchBar from './SearchBar';
+import GlobalSearch from './GlobalSearch';
 import ChatList from './ChatList';
 import { getFileUrl } from '../../utils/constants';
 import { get } from '../../utils/api';
@@ -14,6 +14,7 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const [notifState, setNotifState] = useState('unknown'); // 'unknown' | 'enabled' | 'disabled' | 'unsupported'
   const [notifLoading, setNotifLoading] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Sync bell state with real permission + FCM token state
   const syncNotifState = () => {
@@ -209,11 +210,24 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
         </div>
       </div>
       
-      <SearchBar onSelectUser={onNewChat} />
+      <div className="search-container" style={{ padding: '10px 20px' }}>
+        <div className="search-input-wrapper" onClick={() => setIsSearchOpen(true)} style={{ cursor: 'text' }}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '15px', flex: 1, padding: '8px 0' }}>Search all conversations...</div>
+        </div>
+      </div>
       
       <div className="sidebar-list">
         <ChatList conversations={conversations} selectedId={selectedId} onSelect={onSelect} />
       </div>
+
+      {isSearchOpen && (
+        <GlobalSearch 
+          onClose={() => setIsSearchOpen(false)} 
+          onSelectUser={(u) => { setIsSearchOpen(false); onNewChat(u); }}
+          onSelectMessage={(convId, msgId) => { setIsSearchOpen(false); onSelect(convId, msgId); }}
+        />
+      )}
     </div>
   );
 }
