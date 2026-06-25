@@ -9,7 +9,6 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [allowChange, setAllowChange] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
   const [expiresIn, setExpiresIn] = useState('0'); // '0' means no expiration
 
   if (!isOpen) return null;
@@ -52,8 +51,9 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
       setOptions(['', '']);
       setAllowMultiple(false);
       setIsAnonymous(false);
+      setAllowMultiple(false);
+      setIsAnonymous(false);
       setAllowChange(true);
-      setShowSettings(false);
       setExpiresIn('0');
     }
   };
@@ -86,73 +86,63 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
           </div>
 
           <form onSubmit={handleSubmit} className="poll-form">
-            <div className="form-group">
-              <label>Question</label>
-              <input
-                type="text"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="Ask a question..."
-                className="form-input"
-                autoFocus
-              />
-            </div>
-
-            <div className="options-container">
-              <label>Options</label>
-              {options.map((option, index) => (
-                <motion.div 
-                  key={index} 
-                  className="poll-option-input"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                >
+            <div className="poll-form-grid">
+              {/* LEFT COLUMN: Question and Options */}
+              <div className="poll-left-col">
+                <div className="form-group">
+                  <label>Question</label>
                   <input
                     type="text"
-                    value={option}
-                    onChange={(e) => handleOptionChange(index, e.target.value)}
-                    placeholder={`Option ${index + 1}`}
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    placeholder="Ask a question..."
                     className="form-input"
+                    autoFocus
                   />
-                  {options.length > 2 && (
-                    <button 
-                      type="button" 
-                      className="remove-option-btn" 
-                      onClick={() => handleRemoveOption(index)}
-                      title="Remove option"
+                </div>
+
+                <div className="options-container">
+                  <label>Options</label>
+                  {options.map((option, index) => (
+                    <motion.div 
+                      key={index} 
+                      className="poll-option-input"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
                     >
-                      <Trash2 size={16} />
+                      <input
+                        type="text"
+                        value={option}
+                        onChange={(e) => handleOptionChange(index, e.target.value)}
+                        placeholder={`Option ${index + 1}`}
+                        className="form-input"
+                      />
+                      {options.length > 2 && (
+                        <button 
+                          type="button" 
+                          className="remove-option-btn" 
+                          onClick={() => handleRemoveOption(index)}
+                          title="Remove option"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </motion.div>
+                  ))}
+                  
+                  {options.length < 10 && (
+                    <button type="button" className="add-option-btn interactive" onClick={handleAddOption}>
+                      <Plus size={16} /> Add Option
                     </button>
                   )}
-                </motion.div>
-              ))}
-              
-              {options.length < 10 && (
-                <button type="button" className="add-option-btn interactive" onClick={handleAddOption}>
-                  <Plus size={16} /> Add Option
-                </button>
-              )}
-            </div>
+                </div>
+              </div>
 
-            <div className="poll-settings-toggle">
-              <button 
-                type="button" 
-                className="settings-toggle-btn"
-                onClick={() => setShowSettings(!showSettings)}
-              >
-                <Settings size={16} />
-                {showSettings ? 'Hide Settings' : 'Poll Settings'}
-              </button>
-            </div>
-
-            <AnimatePresence>
-              {showSettings && (
-                <motion.div 
-                  className="poll-settings"
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                >
+              {/* RIGHT COLUMN: Settings and Submit */}
+              <div className="poll-right-col">
+                <div className="poll-settings always-open">
+                  <h4 className="settings-title"><Settings size={16} /> Poll Settings</h4>
+                  
                   <div className="setting-row">
                     <div className="setting-info">
                       <span className="setting-label">Allow multiple answers</span>
@@ -226,13 +216,13 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
                       ))}
                     </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
 
-            <div className="modal-footer">
-              <button type="button" className="btn-secondary interactive" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn-primary interactive" disabled={isSubmitDisabled}>Create Poll</button>
+                <div className="modal-footer">
+                  <button type="button" className="btn-secondary interactive" onClick={onClose}>Cancel</button>
+                  <button type="submit" className="btn-primary interactive" disabled={isSubmitDisabled}>Create Poll</button>
+                </div>
+              </div>
             </div>
           </form>
         </motion.div>
