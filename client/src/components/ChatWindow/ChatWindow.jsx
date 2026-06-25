@@ -12,7 +12,7 @@ import { useTheme } from '../../context/ThemeContext';
 import './ChatWindow.css';
 
 export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall }) {
-  const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage, markMessagesRead, markMessagesDelivered } = useMessages(conversation.id);
+  const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered } = useMessages(conversation.id);
   const { socket, setActiveConversationId } = useSocketContext();
   const { wallpaper } = useTheme();
   
@@ -97,6 +97,10 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
       }
     };
 
+    const handlePollUpdated = (pollUpdateData) => {
+      updatePoll(pollUpdateData.messageId, pollUpdateData);
+    };
+
     const handleConversationRead = ({ conversationId, userId }) => {
       if (conversationId === conversation.id) {
         markMessagesRead(userId);
@@ -118,6 +122,7 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     socket.on('new_message', handleNewMessage);
     socket.on('message_deleted', handleMessageDeleted);
     socket.on('message_edited', handleMessageEdited);
+    socket.on('poll_updated', handlePollUpdated);
     socket.on('conversation_read', handleConversationRead);
     socket.on('message_delivered', handleMessageDelivered);
     socket.on('messages_delivered', handleMessagesDelivered);
@@ -128,11 +133,12 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
       socket.off('new_message', handleNewMessage);
       socket.off('message_deleted', handleMessageDeleted);
       socket.off('message_edited', handleMessageEdited);
+      socket.off('poll_updated', handlePollUpdated);
       socket.off('conversation_read', handleConversationRead);
       socket.off('message_delivered', handleMessageDelivered);
       socket.off('messages_delivered', handleMessagesDelivered);
     };
-  }, [socket, conversation.id, addMessage, removeMessage, updateMessage, markMessagesRead, markMessagesDelivered]);
+  }, [socket, conversation.id, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

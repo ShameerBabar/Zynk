@@ -137,6 +137,46 @@ function initializeDatabase(db) {
       );
     `);
 
+    // ── Polls ────────────────────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS polls (
+        id             TEXT PRIMARY KEY,
+        message_id     TEXT UNIQUE NOT NULL,
+        question       TEXT NOT NULL,
+        allow_multiple INTEGER DEFAULT 0,
+        is_anonymous   INTEGER DEFAULT 0,
+        allow_change   INTEGER DEFAULT 1,
+        is_closed      INTEGER DEFAULT 0,
+        expires_at     DATETIME,
+        FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+      );
+    `);
+
+    // ── Poll Options ─────────────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS poll_options (
+        id         TEXT PRIMARY KEY,
+        poll_id    TEXT NOT NULL,
+        text       TEXT NOT NULL,
+        position   INTEGER NOT NULL,
+        FOREIGN KEY (poll_id) REFERENCES polls(id) ON DELETE CASCADE
+      );
+    `);
+
+    // ── Poll Votes ───────────────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS poll_votes (
+        poll_id    TEXT NOT NULL,
+        option_id  TEXT NOT NULL,
+        user_id    TEXT NOT NULL,
+        voted_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (poll_id, option_id, user_id),
+        FOREIGN KEY (poll_id) REFERENCES polls(id) ON DELETE CASCADE,
+        FOREIGN KEY (option_id) REFERENCES poll_options(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+
     // ── Indexes ──────────────────────────────────────────────────────────
     // Speed up message listing per conversation, ordered by time
     db.exec(`

@@ -1,6 +1,6 @@
 .message-row {
   display: flex;
-  margin-bottom: 4px;
+  margin-bottom: 2px; /* reduced for consecutive messages */
   width: 100%;
 }
 
@@ -13,10 +13,10 @@
 }
 
 .message-bubble {
-  max-width: 65%;
+  max-width: 75%; /* increased width slightly */
   min-width: 85px;
-  padding: 6px 7px 8px 9px;
-  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  border-radius: 20px;
   position: relative;
   box-shadow: var(--shadow-sm);
   display: flex;
@@ -24,43 +24,21 @@
   animation: slideUp var(--transition-fast);
 }
 
+/* Modern chat bubbles have flat corners on the bottom edge matching the sender */
 .message-bubble.sent {
   background: var(--bg-msg-sent);
-  border-top-right-radius: 0;
+  border-bottom-right-radius: 4px;
 }
 
 .message-bubble.received {
   background: var(--bg-msg-received);
-  border-top-left-radius: 0;
-}
-
-/* Tails */
-.message-bubble.sent::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: -8px;
-  width: 0;
-  height: 0;
-  border-top: 10px solid var(--bg-msg-sent);
-  border-right: 10px solid transparent;
-}
-
-.message-bubble.received::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -8px;
-  width: 0;
-  height: 0;
-  border-top: 10px solid var(--bg-msg-received);
-  border-left: 10px solid transparent;
+  border-bottom-left-radius: 4px;
 }
 
 .sender-name {
   font-size: var(--fs-xs);
-  font-weight: 500;
-  margin-bottom: 2px;
+  font-weight: 600;
+  margin-bottom: 4px;
 }
 
 .message-content {
@@ -73,6 +51,7 @@
 
 .message-image {
   width: fit-content;
+  margin: -4px -8px 4px -8px; /* bleed image out slightly for polish */
 }
 
 .message-image img {
@@ -80,17 +59,19 @@
   max-height: 400px;
   width: auto;
   height: auto;
-  border-radius: var(--radius-sm);
-  margin-bottom: 5px;
+  border-radius: 16px;
   display: block;
   object-fit: contain;
+}
+
+.message-video {
+  margin: -4px -8px 4px -8px;
 }
 
 .message-video video {
   max-width: min(100%, 350px);
   height: auto;
-  border-radius: var(--radius-sm);
-  margin-bottom: 5px;
+  border-radius: 16px;
   background: #000;
   display: block;
 }
@@ -99,9 +80,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px;
+  padding: 12px;
   background: rgba(0,0,0,0.1);
-  border-radius: var(--radius-sm);
+  border-radius: 16px;
   margin-bottom: 5px;
   color: var(--text-primary);
 }
@@ -120,6 +101,16 @@
   color: var(--text-timestamp);
 }
 
+.message-status {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+}
+
+.message-status.read {
+  color: var(--accent-primary);
+}
+
 .message-status svg {
   width: 14px;
   height: 14px;
@@ -130,7 +121,7 @@
   position: fixed;
   background: var(--bg-dropdown);
   border: 1px solid var(--border-light);
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: var(--shadow-lg);
   z-index: 100000;
   min-width: 165px;
@@ -150,7 +141,8 @@
   cursor: pointer;
   outline: none;
   width: 100%;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   font-family: var(--font-family);
   display: flex;
   align-items: center;

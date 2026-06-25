@@ -3,6 +3,7 @@ import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { formatRelativeTime } from '../../utils/formatTime';
 import { getFileUrl } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ChatListItem({ conversation, isSelected, onClick }) {
   const { user: currentUser } = useAuth();
@@ -36,22 +37,23 @@ export default function ChatListItem({ conversation, isSelected, onClick }) {
       onClick={onClick}
       style={{
         display: 'flex',
-        padding: '12px 16px',
+        padding: '16px',
         cursor: 'pointer',
         background: isSelected ? 'var(--bg-active)' : 'transparent',
         borderBottom: '1px solid var(--border-color)'
       }}
-      className="hover-bg"
+      className="interactive"
     >
-      <div style={{ position: 'relative', marginRight: '15px' }}>
-        <div className="user-avatar-mini" style={{ width: '48px', height: '48px' }}>
+      <div style={{ position: 'relative', marginRight: '16px' }}>
+        <div className="user-avatar-mini" style={{ width: '50px', height: '50px', boxShadow: 'var(--shadow-sm)' }}>
           {avatar ? <img src={avatar} /> : <div className="avatar-placeholder">{name?.[0]?.toUpperCase()}</div>}
         </div>
         {isPrivate && isOnline && (
           <div style={{
             position: 'absolute', bottom: '2px', right: '2px',
-            width: '12px', height: '12px', borderRadius: '50%',
-            background: 'var(--online-color)', border: '2px solid var(--bg-sidebar)'
+            width: '14px', height: '14px', borderRadius: '50%',
+            background: 'var(--online-color)', border: '2px solid var(--bg-sidebar)',
+            animation: 'pulse-online 2s infinite'
           }}></div>
         )}
       </div>
@@ -67,18 +69,35 @@ export default function ChatListItem({ conversation, isSelected, onClick }) {
         </div>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontStyle: lastMsg?.is_deleted ? 'italic' : 'normal' }}>
+          <span style={{ 
+            fontSize: 'var(--fs-sm)', 
+            color: unreadCount ? 'var(--text-primary)' : 'var(--text-secondary)', 
+            fontWeight: unreadCount ? '600' : 'normal',
+            whiteSpace: 'nowrap', 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis', 
+            fontStyle: lastMsg?.is_deleted ? 'italic' : 'normal' 
+          }}>
             {preview}
           </span>
-          {unreadCount > 0 && (
-            <span style={{
-              background: 'var(--unread-badge)', color: 'white',
-              fontSize: '10px', fontWeight: 'bold', padding: '2px 6px',
-              borderRadius: '10px', marginLeft: '10px'
-            }}>
-              {unreadCount}
-            </span>
-          )}
+          <AnimatePresence mode="popLayout">
+            {unreadCount > 0 && (
+              <motion.span 
+                key={unreadCount}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                style={{
+                  background: 'var(--unread-badge)', color: '#0F172A',
+                  fontSize: '11px', fontWeight: 'bold', padding: '3px 8px',
+                  borderRadius: '12px', marginLeft: '10px',
+                  boxShadow: 'var(--shadow-glow)'
+                }}>
+                {unreadCount}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

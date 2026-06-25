@@ -55,6 +55,18 @@ export function useMessages(conversationId) {
     setMessages(prev => prev.map(m => m.id === messageId ? { ...m, content: newContent } : m));
   }, []);
 
+  const updatePoll = useCallback((messageId, pollData) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id === messageId && m.poll) {
+        return {
+          ...m,
+          poll: { ...m.poll, ...pollData }
+        };
+      }
+      return m;
+    }));
+  }, []);
+
   const markMessagesRead = useCallback((userId) => {
     setMessages(prev => prev.map(m => m.sender_id !== userId ? { ...m, status: 'read' } : m));
   }, []);
@@ -77,6 +89,7 @@ export function useMessages(conversationId) {
     addMessage,
     removeMessage,
     updateMessage,
+    updatePoll,
     markMessagesRead,
     markMessagesDelivered
   };

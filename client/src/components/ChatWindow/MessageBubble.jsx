@@ -4,6 +4,9 @@ import { useSocketContext } from '../../context/SocketContext';
 import { formatMessageTime } from '../../utils/formatTime';
 import { getFileUrl } from '../../utils/constants';
 import VoiceMessagePlayer from './VoiceMessagePlayer';
+import PollBubble from './PollBubble';
+import { showToast } from '../Common/Toast';
+import { post } from '../../utils/api';
 import './MessageBubble.css';
 
 export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe }) {
@@ -48,8 +51,15 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe 
   };
 
   const handleCopy = () => {
-    if (message.content) {
-      navigator.clipboard.writeText(message.content);
+    navigator.clipboard.writeText(message.content || '');
+    showToast('Message copied');
+  };
+
+  const handleVote = async (pollId, optionIds) => {
+    try {
+      await post(`/polls/${pollId}/vote`, { optionIds });
+    } catch (err) {
+      showToast(err.message, 'error');
     }
   };
 
@@ -110,7 +120,14 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe 
                   durationProp={message.content ? parseInt(message.content, 10) : 0} 
                 />
               )}
-              {message.type !== 'audio' && message.content && (
+              {message.type === 'poll' && message.poll && (
+                <PollBubble 
+                  poll={message.poll} 
+                  currentUserId={user.id} 
+                  onVote={handleVote}
+                />
+              )}
+              {message.type !== 'audio' && message.type !== 'poll' && message.content && (
                 isEditing ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '4px' }} onClick={e => e.stopPropagation()}>
                     <textarea
@@ -176,15 +193,7 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe 
         <div className="message-meta">
           <span className="message-time">{formatMessageTime(message.created_at)}</span>
           {isMine && !isDeleted && (
-            <span 
-              className="message-status" 
-              style={{ 
-                color: message.status === 'read' ? '#53bdeb' : 'inherit', 
-                opacity: message.status === 'read' ? 1 : 0.6, 
-                display: 'flex', 
-                alignItems: 'center' 
-              }}
-            >
+            <span className={`message-status ${message.status === 'read' ? 'read' : ''}`}>
               {message.status === 'read' || message.status === 'delivered' ? (
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                   <path d="M0.5 12l1.5-1.5L7 15 19.5 2.5l1.5 1.5L7 18z" />

@@ -1,0 +1,171 @@
+.poll-modal {
+  width: 90%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg-modal);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-light);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.text-teal {
+  color: var(--accent-primary);
+}
+
+.poll-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group, .options-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label, .options-container label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.poll-option-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.poll-option-input .form-input {
+  flex: 1;
+}
+
+.remove-option-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.remove-option-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--accent-danger);
+}
+
+.add-option-btn {
+  background: none;
+  border: 1px dashed var(--border-color);
+  color: var(--accent-primary);
+  padding: 10px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all var(--transition-fast);
+}
+
+.add-option-btn:hover {
+  background: rgba(20, 184, 166, 0.05);
+  border-color: var(--accent-primary);
+}
+
+.poll-settings-toggle {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.settings-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 0;
+  transition: color var(--transition-fast);
+}
+
+.settings-toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+.poll-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--bg-hover);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  overflow: hidden;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.setting-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.setting-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}

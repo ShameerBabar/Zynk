@@ -289,6 +289,46 @@ router.get('/:conversationId', (req, res) => {
       }
     }));
 
+    // Attach poll data for any poll messages
+    const pollMessageIds = formattedMessages.filter(m => m.type === 'poll').map(m => m.id);
+    if (pollMessageIds.length > 0) {
+      const placeholders = pollMessageIds.map(() => '?').join(',');
+      const polls = db.prepare(`SELECT * FROM polls WHERE message_id IN (${placeholders})`).all(...pollMessageIds);
+      
+      const pollIds = polls.map(p => p.id);
+      if (pollIds.length > 0) {
+        const optionPlaceholders = pollIds.map(() => '?').join(',');
+        const options = db.prepare(`SELECT * FROM poll_options WHERE poll_id IN (${optionPlaceholders}) ORDER BY position ASC`).all(...pollIds);
+        const votes = db.prepare(`
+          SELECT pv.poll_id, pv.option_id, pv.user_id, u.display_name, u.username
+          FROM poll_votes pv
+          JOIN users u ON u.id = pv.user_id
+          WHERE pv.poll_id IN (${optionPlaceholders})
+        `).all(...pollIds);
+
+        // Map data back to messages
+        polls.forEach(poll => {
+          const msg = formattedMessages.find(m => m.id === poll.message_id);
+          if (msg) {
+            const pollOptions = options.filter(o => o.poll_id === poll.id);
+            const pollVotes = votes.filter(v => v.poll_id === poll.id);
+            
+            // Format votes for anonymity if needed
+            const formattedVotes = pollVotes.map(v => {
+              if (poll.is_anonymous === 1) return { option_id: v.option_id };
+              return v;
+            });
+
+            msg.poll = {
+              ...poll,
+              options: pollOptions,
+              votes: formattedVotes
+            };
+          }
+        });
+      }
+    }
+
     // Get total message count for pagination info
     const total = db.prepare(
       'SELECT COUNT(*) AS count FROM messages WHERE conversation_id = ?'

@@ -1,12 +1,16 @@
 import React from 'react';
 import ChatListItem from './ChatListItem';
+import EmptyState from '../Common/EmptyState';
+import { MessageSquarePlus } from 'lucide-react';
 
 export default function ChatList({ conversations, selectedId, onSelect }) {
   if (!conversations || conversations.length === 0) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-        No conversations yet
-      </div>
+      <EmptyState 
+        icon={MessageSquarePlus}
+        title="No Messages"
+        message="Start a conversation with a friend to see it here."
+      />
     );
   }
 

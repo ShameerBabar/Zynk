@@ -66,11 +66,24 @@
   align-items: center;
   padding: 0 12px;
   height: 36px;
+  transition: all var(--transition-normal);
+  border: 1px solid transparent;
+}
+
+.search-input-wrapper:focus-within {
+  background: var(--bg-sidebar);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2);
 }
 
 .search-input-wrapper svg {
   color: var(--text-secondary);
   margin-right: 12px;
+  transition: color var(--transition-fast);
+}
+
+.search-input-wrapper:focus-within svg {
+  color: var(--accent-primary);
 }
 
 .search-input-wrapper input {

@@ -5,7 +5,9 @@ import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
 import { useTheme } from '../../context/ThemeContext';
 import CameraCaptureModal from './CameraCaptureModal';
+import CreatePollModal from './CreatePollModal';
 import { showToast } from '../Common/Toast';
+import { post } from '../../utils/api';
 import './MessageInput.css';
 
 export default function MessageInput({ conversationId }) {
@@ -13,6 +15,7 @@ export default function MessageInput({ conversationId }) {
   const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showCameraModal, setShowCameraModal] = useState(false);
+  const [showPollModal, setShowPollModal] = useState(false);
   
   // Voice Recording States
   const [isRecording, setIsRecording] = useState(false);
@@ -224,6 +227,21 @@ export default function MessageInput({ conversationId }) {
     return `${m}:${s}`;
   };
 
+  const handleCreatePoll = async (pollData) => {
+    try {
+      await post('/polls', {
+        conversationId,
+        ...pollData
+      });
+
+      setShowPollModal(false);
+      showToast('Poll created', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast(err.message, 'error');
+    }
+  };
+
   return (
     <div className="message-input-container" style={{ position: 'relative' }}>
       {showEmojiPicker && (
@@ -238,10 +256,16 @@ export default function MessageInput({ conversationId }) {
       
       {showCameraModal && (
         <CameraCaptureModal 
-          onClose={() => setShowCameraModal(false)} 
-          onCapture={handleMediaCapture} 
+          onClose={() => setShowCameraModal(false)}
+          onCapture={handleMediaCapture}
         />
       )}
+
+      <CreatePollModal
+        isOpen={showPollModal}
+        onClose={() => setShowPollModal(false)}
+        onSubmit={handleCreatePoll}
+      />
 
       {isRecording ? (
         // Voice Message Recording Overlay
@@ -283,13 +307,16 @@ export default function MessageInput({ conversationId }) {
         // Normal Message Input Controls
         <>
           <div className="input-actions">
-            <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} title="Emoji" disabled={uploading}>
+            <button className="icon-button interactive" onClick={() => setShowEmojiPicker(!showEmojiPicker)} title="Emoji" disabled={uploading}>
               <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm3.5 9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c-2.33 0-4.31-1.46-5.11-3.5h10.22c-.8 2.04-2.78 3.5-5.11 3.5z"></path></svg>
             </button>
-            <button onClick={() => fileInputRef.current?.click()} title="Attach File" disabled={uploading}>
+            <button className="icon-button interactive" onClick={() => fileInputRef.current?.click()} title="Attach File" disabled={uploading}>
               <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><path d="M21.58 12.58l-9-9a6.53 6.53 0 0 0-9.19 9.19l1.2 1.2 9 9a3.53 3.53 0 0 0 5-5l-1.2-1.2-9-9a.53.53 0 0 0-.71.71l9 9a2 2 0 0 1-2.83 2.83l-9-9a5 5 0 0 1 7.07-7.07l9 9a1 1 0 0 1-1.42 1.42z"></path></svg>
             </button>
-            <button onClick={() => setShowCameraModal(true)} title="Take Photo" disabled={uploading}>
+            <button className="icon-button interactive" onClick={() => setShowPollModal(true)} title="Create Poll" disabled={uploading}>
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"></path><path d="M12 20V4"></path><path d="M6 20v-4"></path></svg>
+            </button>
+            <button className="icon-button interactive" onClick={() => setShowCameraModal(true)} title="Take Photo" disabled={uploading}>
               <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor"><circle cx="12" cy="12" r="3.2"/><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
             </button>
             <input 
