@@ -71,8 +71,14 @@
   color: var(--text-primary);
 }
 
+.message-image {
+  width: fit-content;
+}
+
 .message-image img {
   max-width: min(100%, 350px);
+  max-height: 400px;
+  width: auto;
   height: auto;
   border-radius: var(--radius-sm);
   margin-bottom: 5px;

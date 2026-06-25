@@ -5,7 +5,7 @@ import { getFileUrl } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
 import { useSocketContext } from '../../context/SocketContext';
 
-export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated, onUpdateConversation }) {
+export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated, onUpdateConversation, messages = [] }) {
   const { user: currentUser } = useAuth();
   const [members, setMembers] = useState(conversation.members || []);
   const [showAddMembers, setShowAddMembers] = useState(false);
@@ -14,7 +14,7 @@ export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated
   const [selectedToAdd, setSelectedToAdd] = useState([]);
   const [adding, setAdding] = useState(false);
   const [activeTab, setActiveTab] = useState('members'); // 'members' or 'media'
-  const [mediaList, setMediaList] = useState([]);
+  const [mediaList, setMediaList] = useState(() => messages.filter(m => m.file_url && !m.is_deleted));
   const { socket } = useSocketContext();
 
   // Edit Mode
@@ -46,12 +46,31 @@ export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated
     if (!socket) return;
     const handleNewMessage = (msg) => {
       if (msg.conversation_id === conversation.id && msg.file_url) {
-        setMediaList(prev => [msg, ...prev]);
+        setMediaList(prev => {
+          // Prevent duplicates if already added by messages prop update
+          if (prev.find(m => m.id === msg.id)) return prev;
+          return [msg, ...prev];
+        });
       }
     };
     socket.on('new_message', handleNewMessage);
     return () => socket.off('new_message', handleNewMessage);
   }, [socket, conversation.id]);
+
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      setMediaList(prev => {
+        const existingIds = new Set(prev.map(m => m.id));
+        const newMedia = messages.filter(m => m.file_url && !m.is_deleted && !existingIds.has(m.id));
+        if (newMedia.length > 0) {
+          // Combine and sort by date descending
+          const combined = [...prev, ...newMedia].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          return combined;
+        }
+        return prev;
+      });
+    }
+  }, [messages]);
 
   const handleSearch = async (e) => {
     const q = e.target.value;
@@ -346,12 +365,22 @@ export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated
             {mediaList.length === 0 ? (
               <div style={{ gridColumn: '1 / -1', padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '14px' }}>No media in this group yet.</div>
             ) : mediaList.map(m => {
+              const handleMediaClick = () => {
+                const el = document.getElementById(`message-${m.id}`);
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  el.style.transition = 'background-color 0.5s';
+                  el.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                  setTimeout(() => el.style.backgroundColor = 'transparent', 1500);
+                }
+              };
+
               if (m.type === 'image') {
-                return <div key={m.id} style={{ aspectRatio: '1', overflow: 'hidden', borderRadius: '4px', background: 'var(--bg-active)' }}><img src={getFileUrl(m.file_url)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>;
+                return <div key={m.id} onClick={handleMediaClick} style={{ aspectRatio: '1', overflow: 'hidden', borderRadius: '4px', background: 'var(--bg-active)', cursor: 'pointer' }}><img src={getFileUrl(m.file_url)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>;
               } else if (m.type === 'video') {
-                return <div key={m.id} style={{ aspectRatio: '1', overflow: 'hidden', borderRadius: '4px', background: '#000', position: 'relative' }}><video src={getFileUrl(m.file_url)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /><div style={{ position: 'absolute', bottom: '4px', left: '4px', color: 'white' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div></div>;
+                return <div key={m.id} onClick={handleMediaClick} style={{ aspectRatio: '1', overflow: 'hidden', borderRadius: '4px', background: '#000', position: 'relative', cursor: 'pointer' }}><video src={getFileUrl(m.file_url)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /><div style={{ position: 'absolute', bottom: '4px', left: '4px', color: 'white' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div></div>;
               } else {
-                return <div key={m.id} style={{ aspectRatio: '1', overflow: 'hidden', borderRadius: '4px', background: 'var(--bg-active)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px', textAlign: 'center' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="var(--text-secondary)"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg><div style={{ fontSize: '10px', marginTop: '4px', wordBreak: 'break-all', color: 'var(--text-secondary)' }}>{m.file_name}</div></div>;
+                return <div key={m.id} onClick={handleMediaClick} style={{ aspectRatio: '1', overflow: 'hidden', borderRadius: '4px', background: 'var(--bg-active)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px', textAlign: 'center', cursor: 'pointer' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="var(--text-secondary)"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg><div style={{ fontSize: '10px', marginTop: '4px', wordBreak: 'break-all', color: 'var(--text-secondary)' }}>{m.file_name}</div></div>;
               }
             })}
           </div>
@@ -360,4 +389,3 @@ export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated
     </div>
   );
 }
-

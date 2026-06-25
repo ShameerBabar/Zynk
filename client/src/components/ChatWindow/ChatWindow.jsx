@@ -247,12 +247,14 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
                   <span>{formatDateSeparator(msg.created_at)}</span>
                 </div>
               )}
-              <MessageBubble 
-                message={msg} 
-                isGroup={!isPrivate} 
-                isSelf={isSelf} 
-                onDeleteForMe={handleDeleteForMe}
-              />
+              <div id={`message-${msg.id}`}>
+                <MessageBubble 
+                  message={msg} 
+                  isGroup={!isPrivate} 
+                  isSelf={isSelf} 
+                  onDeleteForMe={handleDeleteForMe}
+                />
+              </div>
             </React.Fragment>
           );
         })}
@@ -266,6 +268,7 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
           conversation={{ ...conversation, members: groupMembers }}
           onClose={() => setShowGroupInfo(false)}
           onMembersUpdated={setGroupMembers}
+          messages={messages}
         />
       )}
     </div>
