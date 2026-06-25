@@ -17,6 +17,26 @@ export default function SettingsPanel({ onClose }) {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
+  const handleForceUpdate = () => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let reg of registrations) {
+          reg.unregister();
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        for (let name of names) {
+          caches.delete(name);
+        }
+      });
+    }
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
+
   // Push notification diagnostics states
   const [notificationPermission, setNotificationPermission] = useState(
     typeof window !== 'undefined' ? Notification.permission : 'unknown'
@@ -442,7 +462,29 @@ export default function SettingsPanel({ onClose }) {
               {reloadingToken ? 'Re-registering...' : 'Force Re-Register Push'}
             </button>
           </div>
-        </div>
+          </div>
+
+          <div className="settings-section">
+            <h3 className="section-title" style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '12px', letterSpacing: '0.5px' }}>App Updates</h3>
+            <div className="settings-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                If you are using the homescreen app and it hasn't updated to the latest version, you can force a reload here.
+              </span>
+              <button 
+                onClick={handleForceUpdate}
+                style={{
+                  width: '100%', background: 'var(--bg-active)',
+                  border: '1px solid var(--border-color)', color: 'var(--text-primary)',
+                  padding: '8px', borderRadius: '6px', cursor: 'pointer',
+                  fontWeight: '600', fontSize: '12px', transition: 'background var(--transition-fast)'
+                }}
+                onMouseOver={e => (e.currentTarget.style.background = 'var(--border-light)')}
+                onMouseOut={e => (e.currentTarget.style.background = 'var(--bg-active)')}
+              >
+                Force Reload App
+              </button>
+            </div>
+          </div>
 
         {/* Logout Button */}
         <button 
