@@ -228,7 +228,7 @@ router.get('/:conversationId/search', (req, res) => {
       WHERE m.conversation_id = ?
         AND m.is_deleted = 0
         AND m.type = 'text'
-        AND m.content LIKE ?
+        AND LOWER(m.content) LIKE LOWER(?)
       ORDER BY m.created_at DESC
       LIMIT 200
     `).all(conversationId, `%${q}%`);
