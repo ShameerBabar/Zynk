@@ -300,7 +300,7 @@ router.get('/:conversationId', (req, res) => {
         const optionPlaceholders = pollIds.map(() => '?').join(',');
         const options = db.prepare(`SELECT * FROM poll_options WHERE poll_id IN (${optionPlaceholders}) ORDER BY position ASC`).all(...pollIds);
         const votes = db.prepare(`
-          SELECT pv.poll_id, pv.option_id, pv.user_id, u.display_name, u.username
+          SELECT pv.poll_id, pv.option_id, pv.user_id, u.display_name, u.username, u.avatar_url
           FROM poll_votes pv
           JOIN users u ON u.id = pv.user_id
           WHERE pv.poll_id IN (${optionPlaceholders})

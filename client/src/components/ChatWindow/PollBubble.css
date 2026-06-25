@@ -134,3 +134,39 @@
 .poll-meta-bullet {
   opacity: 0.7;
 }
+
+.poll-option-avatars {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.poll-avatar-img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--bg-hover);
+  margin-left: -6px;
+  background-color: var(--bg-panel);
+}
+
+.poll-avatar-img:first-child {
+  margin-left: 0;
+}
+
+.poll-avatar-more {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-hover);
+  margin-left: -6px;
+  z-index: 1;
+}

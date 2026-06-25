@@ -166,7 +166,7 @@ router.post('/:pollId/vote', (req, res) => {
 
     // Fetch updated votes for this poll
     const allVotes = db.prepare(`
-      SELECT pv.option_id, pv.user_id, u.display_name, u.username
+      SELECT pv.option_id, pv.user_id, u.display_name, u.username, u.avatar_url
       FROM poll_votes pv
       JOIN users u ON u.id = pv.user_id
       WHERE pv.poll_id = ?

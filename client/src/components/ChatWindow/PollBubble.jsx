@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart2, CheckCircle2 } from 'lucide-react';
+import { getFileUrl } from '../../utils/constants';
 import './PollBubble.css';
 
 function PollBubble({ poll, currentUserId, onVote }) {
@@ -82,6 +83,22 @@ function PollBubble({ poll, currentUserId, onVote }) {
                 <div className="poll-option-text-group">
                   <span className="poll-option-text">{option.text}</span>
                   {hasVoted && <CheckCircle2 size={14} className="voted-icon" />}
+                  {voteCount > 0 && poll.is_anonymous !== 1 && (
+                    <div className="poll-option-avatars">
+                      {optionVotes.slice(0, 3).map((v) => (
+                        <img 
+                          key={v.user_id} 
+                          className="poll-avatar-img"
+                          src={v.avatar_url ? getFileUrl(v.avatar_url) : '/default-avatar.png'} 
+                          alt={v.display_name} 
+                          title={v.display_name}
+                        />
+                      ))}
+                      {voteCount > 3 && (
+                        <div className="poll-avatar-more">+{voteCount - 3}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {totalVotes > 0 && (
                   <span className="poll-option-percent">

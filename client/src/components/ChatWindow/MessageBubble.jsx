@@ -39,16 +39,7 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe 
     setMenuPosition({ x: e.clientX, y: e.clientY });
   };
 
-  const handleBubbleClick = (e) => {
-    // If it's a mobile screen width, toggle the menu on tap
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-      e.preventDefault();
-      e.stopPropagation();
-      setShowMenu(prev => !prev);
-      setMenuPosition({ x: e.clientX || 100, y: e.clientY || 100 });
-    }
-  };
+
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content || '');
@@ -81,7 +72,6 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe 
       <div 
         className={`message-bubble ${isMine ? 'sent' : 'received'}`}
         onContextMenu={handleContextMenu}
-        onClick={handleBubbleClick}
         style={{ cursor: 'pointer' }}
       >
         {!isMine && isGroup && !isDeleted && (
