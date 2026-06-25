@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 export default function CameraCaptureModal({ onClose, onCapture }) {
   const [mode, setMode] = useState('photo'); // 'photo' | 'video'
+  const [facingMode, setFacingMode] = useState('user'); // 'user' | 'environment'
   const [stream, setStream] = useState(null);
   const [permissionError, setPermissionError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -30,7 +31,7 @@ export default function CameraCaptureModal({ onClose, onCapture }) {
       }
 
       const constraints = {
-        video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: mode === 'video'
       };
 
@@ -45,7 +46,7 @@ export default function CameraCaptureModal({ onClose, onCapture }) {
         if (mode === 'video') {
           try {
             const fallbackStream = await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
+              video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
               audio: false
             });
             activeStream = fallbackStream;
@@ -75,7 +76,7 @@ export default function CameraCaptureModal({ onClose, onCapture }) {
         activeStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [mode]);
+  }, [mode, facingMode]);
 
   useEffect(() => {
     return () => {
@@ -295,7 +296,7 @@ export default function CameraCaptureModal({ onClose, onCapture }) {
               width: '100%', height: '100%',
               objectFit: 'cover',
               display: loading ? 'none' : 'block',
-              transform: 'scaleX(-1)'
+              transform: facingMode === 'user' ? 'scaleX(-1)' : 'none'
             }}
           />
         )}
@@ -491,20 +492,28 @@ export default function CameraCaptureModal({ onClose, onCapture }) {
             </button>
           )}
 
-          {/* Flip camera (placeholder, cycles through constraints) */}
+          {/* Flip camera button */}
           <button
             style={{
               width: '52px', height: '52px', borderRadius: '50%',
               background: 'rgba(255,255,255,0.12)',
               border: '1px solid rgba(255,255,255,0.25)',
-              cursor: 'pointer', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', color: '#fff'
+              cursor: isRecording ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center',
+              justifyContent: 'center', color: '#fff',
+              opacity: isRecording ? 0.4 : 1,
+              transition: 'background 0.2s'
             }}
-            title="Flip camera (not yet supported in-browser)"
-            onClick={() => {/* future: toggle facingMode */}}
+            title="Flip camera"
+            disabled={isRecording}
+            onClick={() => {
+              if (!isRecording) {
+                setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+              }
+            }}
           >
             <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
-              <path d="M20 5h-3.17L15 3H9L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-10 11V8l6 4-6 4z"/>
+              <path d="M20 5h-3.17L15 3H9L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z M12 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
             </svg>
           </button>
         </div>
