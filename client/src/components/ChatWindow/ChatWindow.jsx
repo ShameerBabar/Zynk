@@ -140,13 +140,16 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     };
   }, [socket, conversation.id, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (behavior = 'auto') => {
+    // Use a small timeout to allow the DOM to render the latest messages before scrolling
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
+    }, 50);
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages.length]); // Scroll on new messages. Better approach checks if already at bottom.
+    scrollToBottom('auto');
+  }, [messages.length, conversation.id]);
 
   const customBgStyle = (wallpaper === 'custom' && currentUser?.chat_background_url)
     ? { backgroundImage: `url(${getFileUrl(currentUser.chat_background_url)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
