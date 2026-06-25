@@ -69,7 +69,7 @@ router.post('/', (req, res) => {
 
     // Retrieve full message to broadcast
     const message = db.prepare(`
-      SELECT m.id, m.sender_id, m.content, m.type, m.is_deleted, m.created_at,
+      SELECT m.id, m.conversation_id, m.sender_id, m.content, m.type, m.is_deleted, m.created_at,
              u.username AS sender_username, u.display_name AS sender_display_name, u.avatar_url AS sender_avatar
       FROM messages m
       JOIN users u ON u.id = m.sender_id
