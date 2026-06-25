@@ -107,11 +107,23 @@ router.get('/', (req, res) => {
         }
       }
 
+      let inferredType = m.type;
+      if (inferredType === 'file' && m.file_name) {
+        const lowerName = m.file_name.toLowerCase();
+        if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.gif') || lowerName.endsWith('.webp')) {
+          inferredType = 'image';
+        } else if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.mov')) {
+          inferredType = 'video';
+        } else if (lowerName.endsWith('.mp3') || lowerName.endsWith('.wav') || lowerName.endsWith('.ogg')) {
+          inferredType = 'audio';
+        }
+      }
+
       return {
         id: m.id,
         conversation_id: m.conversation_id,
         content: m.content,
-        type: m.type,
+        type: inferredType,
         file_url: m.file_url,
         file_name: m.file_name,
         created_at: m.created_at,

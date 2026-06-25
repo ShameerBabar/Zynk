@@ -142,9 +142,11 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   }, [socket, conversation.id, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered]);
 
   const scrollToBottom = (behavior = 'auto') => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
-    }, 50);
+    const scroll = () => messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
+    scroll(); // Try immediately
+    setTimeout(scroll, 100); // Try after DOM update
+    setTimeout(scroll, 300); // Try after some images might have loaded
+    setTimeout(scroll, 800); // Fallback for slower images
   };
 
   useEffect(() => {
