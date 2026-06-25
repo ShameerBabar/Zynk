@@ -4,12 +4,59 @@ import { useSocketContext } from '../../context/SocketContext';
 import { getFileUrl } from '../../utils/constants';
 import { showToast } from '../Common/Toast';
 
-const iceServers = [
+// ── ICE servers: STUN + free TURN relays ─────────────────────────────────────
+const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
+  // Open Relay free TURN servers (no credentials needed)
+  { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject', urls: 'turns:openrelay.metered.ca:443' },
 ];
+
+// ── Ringing tone (simple Web Audio API beep sequence) ────────────────────────
+function createRingtone() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    let stopped = false;
+    let timeout = null;
+
+    const beep = (freq, start, duration) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0, ctx.currentTime + start);
+      gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + start + 0.01);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + start + duration);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration + 0.05);
+    };
+
+    const playSequence = () => {
+      if (stopped) return;
+      beep(480, 0, 0.4);
+      beep(420, 0.45, 0.4);
+      timeout = setTimeout(playSequence, 3000);
+    };
+
+    playSequence();
+
+    return {
+      stop: () => {
+        stopped = true;
+        clearTimeout(timeout);
+        ctx.close().catch(() => {});
+      }
+    };
+  } catch {
+    return { stop: () => {} };
+  }
+}
+
+const CALL_TIMEOUT_SECONDS = 60;
 
 export default function CallModal({ callData, onCallEnd }) {
   const { user: currentUser } = useAuth();
@@ -20,6 +67,7 @@ export default function CallModal({ callData, onCallEnd }) {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(callData.type === 'voice');
   const [callDuration, setCallDuration] = useState(0);
+  const [timeoutCountdown, setTimeoutCountdown] = useState(CALL_TIMEOUT_SECONDS);
   const [errorMessage, setErrorMessage] = useState('');
 
   // Always-mounted media element refs (never conditionally rendered)
@@ -32,10 +80,52 @@ export default function CallModal({ callData, onCallEnd }) {
   const remoteStreamRef = useRef(null);
   const durationIntervalRef = useRef(null);
   const pendingCandidatesRef = useRef([]);
+  const ringtoneRef = useRef(null);
+  const timeoutIntervalRef = useRef(null);
+  const hasStartedRef = useRef(false);
 
   // Get other user's info
   const otherUserName = callData.otherUser?.display_name || callData.otherUser?.username || 'Zynk User';
   const otherUserAvatar = getFileUrl(callData.otherUser?.avatar_url);
+
+  // ── Ringing tone management ───────────────────────────────────────────────
+  useEffect(() => {
+    if (callState === 'ringing' || callState === 'incoming') {
+      ringtoneRef.current = createRingtone();
+    } else {
+      ringtoneRef.current?.stop();
+      ringtoneRef.current = null;
+    }
+    return () => {
+      ringtoneRef.current?.stop();
+      ringtoneRef.current = null;
+    };
+  }, [callState]);
+
+  // ── 60-second auto-cancel for outgoing calls ──────────────────────────────
+  useEffect(() => {
+    if (callState !== 'ringing') {
+      clearInterval(timeoutIntervalRef.current);
+      setTimeoutCountdown(CALL_TIMEOUT_SECONDS);
+      return;
+    }
+    setTimeoutCountdown(CALL_TIMEOUT_SECONDS);
+    timeoutIntervalRef.current = setInterval(() => {
+      setTimeoutCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timeoutIntervalRef.current);
+          // Auto-cancel
+          socket?.emit('end_call', { targetUserId: callData.otherUser.id });
+          showToast('No answer.', 'info');
+          cleanup();
+          onCallEnd();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timeoutIntervalRef.current);
+  }, [callState]);
 
   // Initialize Peer Connection after media is obtained
   const initCall = async (stream) => {
@@ -47,7 +137,7 @@ export default function CallModal({ callData, onCallEnd }) {
         localVideoRef.current.srcObject = stream;
       }
 
-      const pc = new RTCPeerConnection({ iceServers });
+      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
       peerConnectionRef.current = pc;
 
       // Add local tracks to WebRTC
@@ -129,6 +219,8 @@ export default function CallModal({ callData, onCallEnd }) {
 
   // Start Call (Caller Side)
   const startCall = async () => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
     try {
       const stream = await getMedia(callData.type === 'video');
       const pc = await initCall(stream);
@@ -195,10 +287,12 @@ export default function CallModal({ callData, onCallEnd }) {
   };
 
   const cleanup = () => {
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current);
-      durationIntervalRef.current = null;
-    }
+    clearInterval(durationIntervalRef.current);
+    clearInterval(timeoutIntervalRef.current);
+    durationIntervalRef.current = null;
+    timeoutIntervalRef.current = null;
+    ringtoneRef.current?.stop();
+    ringtoneRef.current = null;
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
@@ -218,7 +312,8 @@ export default function CallModal({ callData, onCallEnd }) {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('call_accepted', async ({ signalData }) => {
+    // Store handlers so we can remove them precisely (avoid removing other listeners)
+    const onCallAccepted = async ({ signalData }) => {
       try {
         const pc = peerConnectionRef.current;
         if (pc) {
@@ -237,21 +332,21 @@ export default function CallModal({ callData, onCallEnd }) {
       } catch (err) {
         console.error('Error accepting call answer:', err);
       }
-    });
+    };
 
-    socket.on('call_rejected', () => {
+    const onCallRejected = () => {
       showToast(`${otherUserName} declined the call.`, 'info');
       cleanup();
       onCallEnd();
-    });
+    };
 
-    socket.on('call_ended', () => {
+    const onCallEnded = () => {
       showToast('Call ended.', 'info');
       cleanup();
       onCallEnd();
-    });
+    };
 
-    socket.on('ice_candidate', async ({ candidate }) => {
+    const onIceCandidate = async ({ candidate }) => {
       try {
         const pc = peerConnectionRef.current;
         if (pc && pc.remoteDescription && pc.remoteDescription.type) {
@@ -263,7 +358,12 @@ export default function CallModal({ callData, onCallEnd }) {
       } catch (err) {
         console.error('Error adding ICE candidate:', err);
       }
-    });
+    };
+
+    socket.on('call_accepted', onCallAccepted);
+    socket.on('call_rejected', onCallRejected);
+    socket.on('call_ended', onCallEnded);
+    socket.on('ice_candidate', onIceCandidate);
 
     // Run Caller Setup if not incoming
     if (!callData.incoming) {
@@ -271,10 +371,11 @@ export default function CallModal({ callData, onCallEnd }) {
     }
 
     return () => {
-      socket.off('call_accepted');
-      socket.off('call_rejected');
-      socket.off('call_ended');
-      socket.off('ice_candidate');
+      // Remove only our specific handlers — won't nuke other components' listeners
+      socket.off('call_accepted', onCallAccepted);
+      socket.off('call_rejected', onCallRejected);
+      socket.off('call_ended', onCallEnded);
+      socket.off('ice_candidate', onIceCandidate);
       cleanup();
     };
   }, [socket]);
@@ -391,7 +492,7 @@ export default function CallModal({ callData, onCallEnd }) {
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: 600 }}>{otherUserName}</h2>
             <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '15px' }}>
-              Incoming {callData.type === 'video' ? 'Video' : 'Voice'} Call...
+              Incoming {callData.type === 'video' ? '🎥 Video' : '🎙️ Voice'} Call...
             </p>
           </div>
 
@@ -427,12 +528,24 @@ export default function CallModal({ callData, onCallEnd }) {
       {/* ── Ringing screen ── */}
       {callState === 'ringing' && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', textAlign: 'center' }}>
-          <div className="user-avatar-mini" style={{ width: '120px', height: '120px', fontSize: '40px' }}>
-            {otherUserAvatar ? <img src={otherUserAvatar} alt="" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : otherUserName[0]?.toUpperCase()}
+          <div style={{ position: 'relative' }}>
+            <div className="user-avatar-mini" style={{ width: '120px', height: '120px', fontSize: '40px' }}>
+              {otherUserAvatar ? <img src={otherUserAvatar} alt="" style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover'}} /> : otherUserName[0]?.toUpperCase()}
+            </div>
+            <div style={{
+              position: 'absolute', top: '-8px', left: '-8px', right: '-8px', bottom: '-8px',
+              borderRadius: '50%', border: '2px solid rgba(0, 168, 132, 0.4)',
+              animation: 'pulse 1.8s infinite ease-in-out'
+            }}></div>
           </div>
           <div>
             <h2 style={{ fontSize: '24px', fontWeight: 600 }}>{otherUserName}</h2>
-            <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '15px' }}>Ringing...</p>
+            <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '15px' }}>
+              {callData.type === 'video' ? '🎥 Video' : '🎙️ Voice'} Calling...
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.35)', marginTop: '6px', fontSize: '13px' }}>
+              Auto-cancels in {timeoutCountdown}s
+            </p>
           </div>
 
           <button

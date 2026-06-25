@@ -85,6 +85,21 @@ function setupSocketHandlers(io, db, sendPushToUser) {
       try {
         db.prepare(`UPDATE users SET is_online = 0, last_seen = CURRENT_TIMESTAMP WHERE id = ?`).run(userId);
         io.emit('user_offline', { userId, lastSeen: new Date().toISOString() });
+
+        // Clean up any group calls the user was in
+        if (io._groupCalls) {
+          for (const [gid] of io._groupCalls) {
+            if (io._groupCalls.get(gid)?.participants.has(userId)) {
+              const call = io._groupCalls.get(gid);
+              call.participants.delete(userId);
+              if (call.participants.size === 0) {
+                io._groupCalls.delete(gid);
+              } else {
+                io.to(gid).emit('group_call_participant_left', { userId });
+              }
+            }
+          }
+        }
       } catch (err) {
         console.error('[SOCKET] Error on disconnect:', err);
       }
@@ -386,6 +401,7 @@ function setupSocketHandlers(io, db, sendPushToUser) {
 
         // Notify all group members of the incoming call
         const groupName = db.prepare('SELECT name FROM conversations WHERE id = ?').get(groupId)?.name || 'Group';
+        const startedByName = callerInfo.display_name || callerInfo.username || 'Someone';
         const members = db.prepare(
           'SELECT user_id FROM conversation_members WHERE conversation_id = ?'
         ).all(groupId);
@@ -396,7 +412,31 @@ function setupSocketHandlers(io, db, sendPushToUser) {
               groupName,
               callType,
               callerInfo,
+              startedByName,
             });
+
+            // ── Web Push for offline group members ─────────────────────────
+            if (sendPushToUser) {
+              const memberStatus = db.prepare(`SELECT is_online FROM users WHERE id = ?`).get(user_id);
+              if (memberStatus && memberStatus.is_online === 0) {
+                sendPushToUser(db, user_id, {
+                  title: `📞 Group ${callType === 'video' ? 'Video' : 'Voice'} Call`,
+                  body: `${startedByName} started a call in ${groupName}`,
+                  icon: '/manifest-icon-192.png',
+                  badge: '/manifest-icon-192.png',
+                  tag: `group-call-${groupId}`,
+                  requireInteraction: true,
+                  data: {
+                    type: 'group_call',
+                    callType,
+                    groupId,
+                    groupName,
+                    startedByName,
+                    url: '/'
+                  }
+                });
+              }
+            }
           }
         });
 
@@ -454,14 +494,7 @@ function setupSocketHandlers(io, db, sendPushToUser) {
       leaveGroupCall(groupId, userId);
     });
 
-    // Also clean up if socket disconnects mid-call
-    socket.on('disconnect', () => {
-      for (const [groupId] of groupCalls) {
-        if (groupCalls.get(groupId)?.participants.has(userId)) {
-          leaveGroupCall(groupId, userId);
-        }
-      }
-    });
+    // NOTE: group call cleanup on disconnect is merged into the main disconnect handler above (line 84)
 
     // Relay WebRTC offer to a specific peer
     socket.on('group_call_offer', ({ groupId, targetUserId, offer }) => {

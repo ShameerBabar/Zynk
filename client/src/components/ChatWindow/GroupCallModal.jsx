@@ -7,7 +7,9 @@ import { showToast } from '../Common/Toast';
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
+  // Open Relay free TURN servers (no credentials needed)
+  { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
 ];
 
 // ── ParticipantTile ───────────────────────────────────────────────────────────
@@ -100,6 +102,8 @@ export default function GroupCallModal({ groupId, groupName, callType, isInitiat
   // Refs (don't trigger re-renders)
   const localStreamRef = useRef(null);
   const peersRef = useRef(new Map()); // userId → { pc, pendingCandidates[] }
+  const mediaReadyRef = useRef(false);       // true once local stream is set
+  const pendingOffersRef = useRef([]);       // offers that arrived before stream was ready
 
   // ── Media ─────────────────────────────────────────────────────────────────
   const getMedia = useCallback(async () => {
@@ -109,6 +113,7 @@ export default function GroupCallModal({ groupId, groupName, callType, isInitiat
         video: callType === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false,
       });
       localStreamRef.current = stream;
+      mediaReadyRef.current = true;
       setLocalStream(stream);
       return stream;
     } catch (err) {
@@ -221,7 +226,7 @@ export default function GroupCallModal({ groupId, groupName, callType, isInitiat
     };
 
     // group_call_offer: incoming offer from a peer, create answer
-    const onOffer = async ({ fromUserId, offer }) => {
+    const processOffer = async ({ fromUserId, offer }) => {
       let peerData = peersRef.current.get(fromUserId);
       if (!peerData) {
         createPeer(fromUserId);
@@ -236,6 +241,15 @@ export default function GroupCallModal({ groupId, groupName, callType, isInitiat
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit('group_call_answer', { groupId, targetUserId: fromUserId, answer });
+    };
+
+    const onOffer = (payload) => {
+      // If local stream isn't ready yet, queue the offer and process later
+      if (!mediaReadyRef.current) {
+        pendingOffersRef.current.push(payload);
+      } else {
+        processOffer(payload);
+      }
     };
 
     // group_call_answer: set remote description from answerer
@@ -301,6 +315,35 @@ export default function GroupCallModal({ groupId, groupName, callType, isInitiat
         socket?.emit('group_call_start', { groupId, callType });
       } else {
         socket?.emit('group_call_join', { groupId });
+      }
+      // Drain any offers that came in before our stream was ready
+      const queued = pendingOffersRef.current.splice(0);
+      for (const payload of queued) {
+        // processOffer is not directly accessible here; re-emit via the listener
+        // which will now see mediaReadyRef.current = true and call processOffer
+        if (localStreamRef.current) {
+          let peerData = peersRef.current.get(payload.fromUserId);
+          if (!peerData) {
+            const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+            localStreamRef.current.getTracks().forEach(t => pc.addTrack(t, localStreamRef.current));
+            pc.ontrack = (e) => {
+              const s = e.streams?.[0] || new MediaStream([e.track]);
+              setPeerStreams(prev => new Map(prev).set(payload.fromUserId, s));
+            };
+            pc.onicecandidate = (e) => {
+              if (e.candidate && socket) socket.emit('group_call_ice', { groupId, targetUserId: payload.fromUserId, candidate: e.candidate });
+            };
+            peersRef.current.set(payload.fromUserId, { pc, pendingCandidates: [] });
+            peerData = peersRef.current.get(payload.fromUserId);
+          }
+          const { pc, pendingCandidates } = peerData;
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+          for (const c of pendingCandidates) await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+          pendingCandidates.length = 0;
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          socket?.emit('group_call_answer', { groupId, targetUserId: payload.fromUserId, answer });
+        }
       }
     })();
     return () => {

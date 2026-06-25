@@ -137,15 +137,16 @@ export default function Chat() {
       }
     };
 
-    const handleIncomingGroupCall = ({ groupId, groupName, callType, callerInfo }) => {
+    const handleIncomingGroupCall = ({ groupId, groupName, callType, callerInfo, startedByName }) => {
       if (activeGroupCallRef.current) return;
-      setIncomingGroupCall({ groupId, groupName, callType, callerInfo });
+      const callerName = startedByName || callerInfo?.display_name || callerInfo?.username || 'Someone';
+      setIncomingGroupCall({ groupId, groupName, callType, callerInfo, callerName });
       
       if (document.visibilityState === 'hidden') {
         if (window.zynk && typeof window.zynk.sendNotification === 'function') {
           window.zynk.sendNotification(
             `📞 Incoming Group ${callType === 'video' ? 'Video' : 'Voice'} Call`,
-            `${callerInfo.display_name || 'Someone'} started a call in ${groupName}`
+            `${callerName} started a call in ${groupName}`
           );
         }
       }
@@ -408,18 +409,28 @@ export default function Chat() {
       {incomingGroupCall && !activeGroupCall && (
         <div style={{
           position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--bg-active)', border: '1px solid var(--border-light)',
-          padding: '16px 24px', borderRadius: '12px', zIndex: 9998, boxShadow: 'var(--shadow-lg)',
-          display: 'flex', alignItems: 'center', gap: '20px', color: 'var(--text-primary)'
+          background: 'linear-gradient(135deg, #1a2a1f, #0d1f16)',
+          border: '1px solid rgba(0,168,132,0.4)',
+          padding: '16px 24px', borderRadius: '16px', zIndex: 9998,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', gap: '20px', color: 'white',
+          minWidth: '300px', maxWidth: '420px'
         }}>
-          <div>
-            <div style={{ fontWeight: 'bold' }}>{incomingGroupCall.callerInfo?.display_name || 'Someone'} started a group {incomingGroupCall.callType} call</div>
-            <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>in {incomingGroupCall.groupName}</div>
+          <div style={{ fontSize: '36px' }}>
+            {incomingGroupCall.callType === 'video' ? '🎥' : '🎤'}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 'bold', fontSize: '15px' }}>
+              {incomingGroupCall.callerName} started a {incomingGroupCall.callType === 'video' ? 'video' : 'voice'} call
+            </div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginTop: '2px' }}>
+              in {incomingGroupCall.groupName}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button 
               onClick={() => setIncomingGroupCall(null)}
-              style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--bg-chat)', color: 'var(--text-primary)', cursor: 'pointer' }}
+              style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.12)', color: 'white', cursor: 'pointer', fontWeight: 500 }}
             >
               Dismiss
             </button>
@@ -428,7 +439,7 @@ export default function Chat() {
                 setIncomingGroupCall(null);
                 setActiveGroupCall({ ...incomingGroupCall, isInitiator: false });
               }}
-              style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', background: 'var(--online-color)', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
+              style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: 'var(--online-color)', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}
             >
               Join
             </button>
