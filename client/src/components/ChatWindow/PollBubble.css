@@ -3,7 +3,6 @@
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  min-width: 250px;
 }
 
 .poll-header {
@@ -99,6 +98,9 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .voted-icon {
