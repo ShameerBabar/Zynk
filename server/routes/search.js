@@ -67,7 +67,7 @@ router.get('/', (req, res) => {
 
     // 2. Type Filter
     if (activeFilter === 'image') {
-      sql += ` AND (m.type = 'image' OR m.file_name LIKE '%.png' OR m.file_name LIKE '%.jpg' OR m.file_name LIKE '%.jpeg' OR m.file_name LIKE '%.gif' OR m.file_name LIKE '%.webp')`;
+      sql += ` AND (m.type = 'image' OR m.file_name LIKE '%.png' OR m.file_name LIKE '%.jpg' OR m.file_name LIKE '%.jpeg' OR m.file_name LIKE '%.gif' OR m.file_name LIKE '%.webp' OR m.file_name LIKE '%.heic')`;
     } else if (activeFilter === 'video') {
       sql += ` AND (m.type = 'video' OR m.file_name LIKE '%.mp4' OR m.file_name LIKE '%.webm' OR m.file_name LIKE '%.mov' OR m.file_name LIKE '%.mkv')`;
     } else if (activeFilter === 'audio') {
@@ -110,7 +110,7 @@ router.get('/', (req, res) => {
       let inferredType = m.type;
       if (inferredType === 'file' && m.file_name) {
         const lowerName = m.file_name.toLowerCase();
-        if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.gif') || lowerName.endsWith('.webp')) {
+        if (lowerName.endsWith('.png') || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || lowerName.endsWith('.gif') || lowerName.endsWith('.webp') || lowerName.endsWith('.heic')) {
           inferredType = 'image';
         } else if (lowerName.endsWith('.mp4') || lowerName.endsWith('.webm') || lowerName.endsWith('.mov')) {
           inferredType = 'video';
@@ -148,6 +148,16 @@ router.get('/', (req, res) => {
   } catch (err) {
     console.error('[SEARCH] Global search error:', err.message);
     return res.status(500).json({ error: 'Internal server error during search.' });
+  }
+});
+
+router.get('/debug', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const files = db.prepare(`SELECT type, file_name, file_url FROM messages WHERE file_url IS NOT NULL AND sender_id = ? ORDER BY created_at DESC LIMIT 50`).all(req.user.id);
+    res.json({ files });
+  } catch(e) {
+    res.status(500).json({error: e.message});
   }
 });
 
