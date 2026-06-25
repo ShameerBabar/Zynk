@@ -141,7 +141,13 @@
   border-radius: 12px;
   border: 1px solid var(--border-light);
   overflow: hidden;
-  height: 100%;
+  height: auto;
+}
+
+@media (min-width: 600px) {
+  .poll-settings {
+    flex: 1;
+  }
 }
 
 .settings-title {
