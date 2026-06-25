@@ -175,10 +175,13 @@ function setupSocketHandlers(io, db, sendPushToUser) {
 
           // Get all conversation members except the sender
           const members = db.prepare(
-            `SELECT user_id FROM conversation_members WHERE conversation_id = ? AND user_id != ?`
+            `SELECT user_id, is_muted FROM conversation_members WHERE conversation_id = ? AND user_id != ?`
           ).all(conversationId, userId);
 
           members.forEach(member => {
+            // Skip if user muted the conversation
+            if (member.is_muted === 1) return;
+
             // Only push if they are offline (is_online = 0)
             const targetUser = db.prepare(`SELECT is_online FROM users WHERE id = ?`).get(member.user_id);
             if (targetUser && targetUser.is_online === 0) {
@@ -403,9 +406,9 @@ function setupSocketHandlers(io, db, sendPushToUser) {
         const groupName = db.prepare('SELECT name FROM conversations WHERE id = ?').get(groupId)?.name || 'Group';
         const startedByName = callerInfo.display_name || callerInfo.username || 'Someone';
         const members = db.prepare(
-          'SELECT user_id FROM conversation_members WHERE conversation_id = ?'
+          'SELECT user_id, is_muted FROM conversation_members WHERE conversation_id = ?'
         ).all(groupId);
-        members.forEach(({ user_id }) => {
+        members.forEach(({ user_id, is_muted }) => {
           if (user_id !== userId) {
             io.to(user_id).emit('group_call_incoming', {
               groupId,
@@ -413,10 +416,11 @@ function setupSocketHandlers(io, db, sendPushToUser) {
               callType,
               callerInfo,
               startedByName,
+              isMuted: is_muted === 1
             });
 
-            // ── Web Push for offline group members ─────────────────────────
-            if (sendPushToUser) {
+            // ── Web Push for offline group members ─────────────────────────────
+            if (sendPushToUser && is_muted !== 1) {
               const memberStatus = db.prepare(`SELECT is_online FROM users WHERE id = ?`).get(user_id);
               if (memberStatus && memberStatus.is_online === 0) {
                 sendPushToUser(db, user_id, {

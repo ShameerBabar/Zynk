@@ -278,6 +278,31 @@ export default function SettingsPanel({ onClose }) {
                   }}
                 />
               ))}
+              <div 
+                title="Custom Image"
+                onClick={() => { document.getElementById('wallpaper-upload').click(); }}
+                style={{
+                    width: '32px', height: '32px', borderRadius: '50%',
+                    background: 'var(--bg-active)', cursor: 'pointer',
+                    border: wallpaper === 'custom' ? '2px solid var(--accent-primary)' : '2px dashed var(--text-secondary)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="var(--text-secondary)"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-1.96-2.36L6.5 17h11l-3.54-4.71z"/></svg>
+              </div>
+              <input type="file" id="wallpaper-upload" style={{ display: 'none' }} accept="image/*" onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                  const res = await uploadAvatar(file); // upload file
+                  const updateRes = await put('/users/profile', { chat_background_url: res.url });
+                  updateProfile(updateRes.user);
+                  setWallpaper('custom');
+                  showToast('Wallpaper updated', 'success');
+                } catch (err) {
+                  showToast(err.message, 'error');
+                }
+              }} />
             </div>
           </div>
         </div>

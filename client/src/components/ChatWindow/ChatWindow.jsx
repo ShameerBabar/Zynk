@@ -6,13 +6,15 @@ import { useAuth } from '../../context/AuthContext';
 import MessageInput from './MessageInput';
 import MessageBubble from './MessageBubble';
 import GroupInfoPanel from '../Group/GroupInfoPanel';
-import { formatDateSeparator, formatLastSeen, parseTimestamp } from '../../utils/formatTime';
+import { formatLastSeen, parseTimestamp, formatDateSeparator } from '../../utils/formatTime';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { useTheme } from '../../context/ThemeContext';
 import './ChatWindow.css';
 
 export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall }) {
   const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage, markMessagesRead, markMessagesDelivered } = useMessages(conversation.id);
   const { socket, setActiveConversationId } = useSocketContext();
+  const { wallpaper } = useTheme();
   
   const [deletedForMeIds, setDeletedForMeIds] = useState(() => {
     try {
@@ -140,8 +142,12 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     scrollToBottom();
   }, [messages.length]); // Scroll on new messages. Better approach checks if already at bottom.
 
+  const customBgStyle = (wallpaper === 'custom' && currentUser?.chat_background_url)
+    ? { backgroundImage: `url(${getFileUrl(currentUser.chat_background_url)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : {};
+
   return (
-    <div className="chat-window">
+    <div className="chat-window" style={customBgStyle}>
       <div className="chat-header">
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {onClose && (

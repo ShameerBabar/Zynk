@@ -81,3 +81,7 @@
 [data-theme='light'][data-wallpaper='charcoal'] .chat-window {
   background: #f0f0f0 !important;
 }
+
+[data-wallpaper='custom'] .chat-window::before {
+  display: none;
+}

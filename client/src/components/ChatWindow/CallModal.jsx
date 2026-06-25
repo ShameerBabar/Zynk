@@ -11,7 +11,7 @@ const ICE_SERVERS = [
   // Open Relay free TURN servers (no credentials needed)
   { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject', urls: 'turns:openrelay.metered.ca:443' },
+  { urls: 'turns:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
 ];
 
 // ── Ringing tone (simple Web Audio API beep sequence) ────────────────────────

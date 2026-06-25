@@ -216,13 +216,13 @@ router.get('/:id', (req, res) => {
 
 /**
  * PUT /profile
- * Updates the current user's display_name, status_text, and/or avatar_url.
+ * Updates the current user's profile fields.
  * Only provided fields are updated.
  */
 router.put('/profile', (req, res) => {
   try {
     const db = req.app.get('db');
-    const { display_name, status_text, avatar_url } = req.body;
+    const { display_name, status_text, avatar_url, chat_background_url } = req.body;
 
     // Build dynamic update — only set fields that were provided
     const updates = [];
@@ -239,6 +239,10 @@ router.put('/profile', (req, res) => {
     if (avatar_url !== undefined) {
       updates.push('avatar_url = ?');
       params.push(avatar_url);
+    }
+    if (chat_background_url !== undefined) {
+      updates.push('chat_background_url = ?');
+      params.push(chat_background_url);
     }
 
     if (updates.length === 0) {

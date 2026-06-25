@@ -187,9 +187,13 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ error: 'Group not found.' });
     }
 
-    // Check admin privileges
-    if (!isGroupAdmin(db, groupId, req.user.id)) {
-      return res.status(403).json({ error: 'Only admins can update group settings.' });
+    // Check membership (any member can update name/avatar)
+    const isMember = db.prepare(
+      'SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?'
+    ).get(groupId, req.user.id);
+
+    if (!isMember) {
+      return res.status(403).json({ error: 'Only members can update group settings.' });
     }
 
     // Build dynamic update

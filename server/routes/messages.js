@@ -37,7 +37,7 @@ router.get('/conversations', (req, res) => {
 
     // Get all conversations the user is a member of
     const conversations = db.prepare(`
-      SELECT c.id, c.type, c.name, c.avatar_url, c.created_by, c.created_at
+      SELECT c.id, c.type, c.name, c.avatar_url, c.created_by, c.created_at, cm.is_muted
       FROM conversations c
       JOIN conversation_members cm ON cm.conversation_id = c.id
       WHERE cm.user_id = ?
@@ -150,6 +150,81 @@ router.get('/conversations', (req, res) => {
   } catch (err) {
     console.error('[MESSAGES] List conversations error:', err.message);
     return res.status(500).json({ error: 'Internal server error listing conversations.' });
+  }
+});
+
+/**
+ * GET /:conversationId/media
+ * Returns all media messages (messages with file_url) for a conversation.
+ */
+router.get('/:conversationId/media', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const { conversationId } = req.params;
+
+    // Verify the user is a member of this conversation
+    const membership = db.prepare(
+      'SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?'
+    ).get(conversationId, req.user.id);
+
+    if (!membership) {
+      return res.status(403).json({ error: 'You are not a member of this conversation.' });
+    }
+
+    const messages = db.prepare(`
+      SELECT m.id, m.sender_id, m.content, m.type,
+             m.file_url, m.file_name, m.file_size, m.created_at,
+             u.username AS sender_username, u.display_name AS sender_display_name
+      FROM messages m
+      JOIN users u ON u.id = m.sender_id
+      WHERE m.conversation_id = ? AND m.file_url IS NOT NULL AND m.is_deleted = 0
+      ORDER BY m.created_at DESC
+    `).all(conversationId);
+
+    // Format
+    const formattedMessages = messages.map(m => ({
+      ...m,
+      sender: {
+        id: m.sender_id,
+        username: m.sender_username,
+        display_name: m.sender_display_name,
+      }
+    }));
+
+    return res.json({ media: formattedMessages });
+  } catch (err) {
+    console.error('[MESSAGES] Get media error:', err.message);
+    return res.status(500).json({ error: 'Internal server error fetching media.' });
+  }
+});
+
+/**
+ * PUT /:conversationId/mute
+ * Toggle mute status for the current user in a conversation.
+ * Body: { is_muted: boolean }
+ */
+router.put('/:conversationId/mute', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const { conversationId } = req.params;
+    const { is_muted } = req.body;
+
+    const membership = db.prepare(
+      'SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?'
+    ).get(conversationId, req.user.id);
+
+    if (!membership) {
+      return res.status(403).json({ error: 'You are not a member of this conversation.' });
+    }
+
+    db.prepare(
+      'UPDATE conversation_members SET is_muted = ? WHERE conversation_id = ? AND user_id = ?'
+    ).run(is_muted ? 1 : 0, conversationId, req.user.id);
+
+    return res.json({ success: true, is_muted: !!is_muted });
+  } catch (err) {
+    console.error('[MESSAGES] Mute conversation error:', err.message);
+    return res.status(500).json({ error: 'Internal server error muting conversation.' });
   }
 });
 
