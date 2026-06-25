@@ -31,6 +31,8 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   const [isBlocked, setIsBlocked] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [inChatTargetId, setInChatTargetId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchMatchIds, setSearchMatchIds] = useState(new Set());
   // Local members state so adding members updates the panel live
   const [groupMembers, setGroupMembers] = useState(conversation.members || []);
 
@@ -301,9 +303,15 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
         <InChatSearch
           conversationId={conversation.id}
           onJumpTo={jumpToMessage}
+          onResults={(q, ids) => {
+            setSearchQuery(q);
+            setSearchMatchIds(new Set(ids));
+          }}
           onClose={() => {
             setShowSearch(false);
             setInChatTargetId(null);
+            setSearchQuery('');
+            setSearchMatchIds(new Set());
           }}
         />
       )}
@@ -328,6 +336,7 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
                   isGroup={!isPrivate} 
                   isSelf={isSelf} 
                   onDeleteForMe={handleDeleteForMe}
+                  searchQuery={searchMatchIds.has(msg.id) ? searchQuery : ''}
                 />
               </div>
             </React.Fragment>

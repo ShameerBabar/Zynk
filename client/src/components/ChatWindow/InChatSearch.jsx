@@ -10,7 +10,7 @@ import { get } from '../../utils/api';
  *                    update targetMessageId so ChatWindow loads the right page
  *  onClose()       — dismiss the search bar
  */
-export default function InChatSearch({ conversationId, onJumpTo, onClose }) {
+export default function InChatSearch({ conversationId, onJumpTo, onClose, onResults }) {
   const [query, setQuery]       = useState('');
   const [results, setResults]   = useState([]);   // [{id, content, sender_name}…] newest→oldest
   const [cursor, setCursor]     = useState(-1);   // index into results; -1 = no selection
@@ -29,6 +29,8 @@ export default function InChatSearch({ conversationId, onJumpTo, onClose }) {
       const data = await get(`/messages/${conversationId}/search?q=${encodeURIComponent(q.trim())}`);
       setResults(data.results || []);
       setCursor(data.results?.length ? 0 : -1);
+      // Notify parent of matched IDs + query for highlighting
+      if (onResults) onResults(q.trim(), (data.results || []).map(r => r.id));
       // Jump to first result immediately
       if (data.results?.length) onJumpTo(data.results[0].id);
     } catch {
@@ -37,11 +39,17 @@ export default function InChatSearch({ conversationId, onJumpTo, onClose }) {
     } finally {
       setLoading(false);
     }
-  }, [conversationId, onJumpTo]);
+  }, [conversationId, onJumpTo, onResults]);
 
+  // Clear results when query is empty
   const handleChange = (e) => {
     const val = e.target.value;
     setQuery(val);
+    if (!val.trim()) {
+      setResults([]);
+      setCursor(-1);
+      if (onResults) onResults('', []);
+    }
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => doSearch(val), 300);
   };

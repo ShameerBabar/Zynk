@@ -9,7 +9,27 @@ import { showToast } from '../Common/Toast';
 import { post } from '../../utils/api';
 import './MessageBubble.css';
 
-export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe }) {
+export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe, searchQuery = '' }) {
+  // Highlight all occurrences of searchQuery inside text
+  const HighlightedText = ({ text, query }) => {
+    if (!query || !text) return <>{text}</>;
+    const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+    return (
+      <>
+        {parts.map((part, i) =>
+          part.toLowerCase() === query.toLowerCase()
+            ? <mark key={i} style={{
+                background: 'rgba(255, 214, 0, 0.55)',
+                color: 'inherit',
+                borderRadius: '3px',
+                padding: '0 1px',
+                fontWeight: 600,
+              }}>{part}</mark>
+            : part
+        )}
+      </>
+    );
+  };
   const { user } = useAuth();
   const { deleteMessage, editMessage } = useSocketContext();
   const isMine = message.sender_id === user.id;
@@ -173,7 +193,7 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe 
                     </div>
                   </div>
                 ) : (
-                  <span>{message.content}</span>
+                  <span><HighlightedText text={message.content} query={searchQuery} /></span>
                 )
               )}
             </>
