@@ -199,6 +199,48 @@ router.get('/:conversationId/media', (req, res) => {
 });
 
 /**
+ * GET /:conversationId/search?q=<query>
+ * Search messages within a single conversation by text content.
+ * Returns matched message IDs + snippets ordered newest → oldest (index 0 = newest).
+ */
+router.get('/:conversationId/search', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const { conversationId } = req.params;
+    const q = req.query.q ? String(req.query.q).trim() : '';
+
+    if (!q) return res.json({ results: [] });
+
+    // Verify the user is a member of this conversation
+    const membership = db.prepare(
+      'SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?'
+    ).get(conversationId, req.user.id);
+
+    if (!membership) {
+      return res.status(403).json({ error: 'You are not a member of this conversation.' });
+    }
+
+    const matches = db.prepare(`
+      SELECT m.id, m.content, m.created_at,
+             u.display_name AS sender_name, u.username AS sender_username
+      FROM messages m
+      JOIN users u ON u.id = m.sender_id
+      WHERE m.conversation_id = ?
+        AND m.is_deleted = 0
+        AND m.type = 'text'
+        AND m.content LIKE ?
+      ORDER BY m.created_at DESC
+      LIMIT 200
+    `).all(conversationId, `%${q}%`);
+
+    return res.json({ results: matches });
+  } catch (err) {
+    console.error('[MESSAGES] In-chat search error:', err.message);
+    return res.status(500).json({ error: 'Internal server error during search.' });
+  }
+});
+
+/**
  * PUT /:conversationId/mute
  * Toggle mute status for the current user in a conversation.
  * Body: { is_muted: boolean }

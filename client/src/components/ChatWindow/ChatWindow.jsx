@@ -7,6 +7,7 @@ import MessageInput from './MessageInput';
 import MessageBubble from './MessageBubble';
 import GroupInfoPanel from '../Group/GroupInfoPanel';
 import UserInfoPanel from './UserInfoPanel';
+import InChatSearch from './InChatSearch';
 import { formatLastSeen, parseTimestamp, formatDateSeparator } from '../../utils/formatTime';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { useTheme } from '../../context/ThemeContext';
@@ -28,6 +29,8 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const [showUserInfo, setShowUserInfo] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [inChatTargetId, setInChatTargetId] = useState(null);
   // Local members state so adding members updates the panel live
   const [groupMembers, setGroupMembers] = useState(conversation.members || []);
 
@@ -54,6 +57,9 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   // Keep groupMembers in sync when conversation prop changes
   useEffect(() => {
     setGroupMembers(conversation.members || []);
+    // Reset search when switching conversations
+    setShowSearch(false);
+    setInChatTargetId(null);
   }, [conversation.id]);
 
   // Real-time: update member list when someone is added
@@ -152,20 +158,36 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     setTimeout(scroll, 800); // Fallback for slower images
   };
 
+  // Jump to a specific message from in-chat search (pulse highlight)
+  const jumpToMessage = (messageId) => {
+    setInChatTargetId(messageId);
+    // If message is already in DOM, scroll immediately
+    const el = document.getElementById(`message-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.remove('message-highlight-pulse');
+      void el.offsetWidth; // force reflow to restart animation
+      el.classList.add('message-highlight-pulse');
+      setTimeout(() => el.classList.remove('message-highlight-pulse'), 2000);
+    }
+  };
+
   useEffect(() => {
-    if (targetMessageId && messages.some(m => m.id === targetMessageId)) {
+    // Handle both global search targetMessageId and in-chat search inChatTargetId
+    const activeTarget = inChatTargetId || targetMessageId;
+    if (activeTarget && messages.some(m => m.id === activeTarget)) {
       setTimeout(() => {
-        const el = document.getElementById(`message-${targetMessageId}`);
+        const el = document.getElementById(`message-${activeTarget}`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           el.classList.add('message-highlight-pulse');
           setTimeout(() => el.classList.remove('message-highlight-pulse'), 2000);
         }
       }, 100);
-    } else if (!targetMessageId) {
+    } else if (!activeTarget) {
       scrollToBottom('auto');
     }
-  }, [messages.length, conversation.id, targetMessageId]);
+  }, [messages.length, conversation.id, targetMessageId, inChatTargetId]);
 
   const customBgStyle = (wallpaper === 'custom' && currentUser?.chat_background_url)
     ? { backgroundImage: `url(${getFileUrl(currentUser.chat_background_url)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -209,7 +231,15 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
           </div>
         </div>
         {isPrivate && !isSelf && onStartCall && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              onClick={() => setShowSearch(s => !s)}
+              style={{ background: 'transparent', border: 'none', color: showSearch ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer', padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              className="hover-bg"
+              title="Search in chat"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </button>
             <button 
               onClick={() => onStartCall('voice')}
               style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -233,7 +263,15 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
           </div>
         )}
         {!isPrivate && onStartGroupCall && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              onClick={() => setShowSearch(s => !s)}
+              style={{ background: 'transparent', border: 'none', color: showSearch ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer', padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              className="hover-bg"
+              title="Search in chat"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </button>
             <button
               onClick={() => onStartGroupCall('voice')}
               style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -257,6 +295,18 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
           </div>
         )}
       </div>
+
+      {/* In-chat search bar */}
+      {showSearch && (
+        <InChatSearch
+          conversationId={conversation.id}
+          onJumpTo={jumpToMessage}
+          onClose={() => {
+            setShowSearch(false);
+            setInChatTargetId(null);
+          }}
+        />
+      )}
       
       <div className="messages-area">
         {loading && <div className="flex-center" style={{ padding: '20px' }}><div className="spinner"></div></div>}
