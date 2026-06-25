@@ -20,9 +20,17 @@ export default function ChatListItem({ conversation, isSelected, onClick }) {
   const unreadCount = conversation.unread_count !== undefined ? conversation.unread_count : conversation.unreadCount;
   
   let preview = lastMsg?.content || '';
-  if (lastMsg?.is_deleted) preview = '🗑 This message was deleted';
-  else if (lastMsg?.type === 'file' || lastMsg?.type === 'image') preview = '📎 File';
-
+  if (lastMsg?.is_deleted) {
+    preview = '🗑 This message was deleted';
+  } else if (lastMsg?.type === 'image') {
+    preview = '📷 Image';
+  } else if (lastMsg?.type === 'video') {
+    preview = '🎥 Video';
+  } else if (lastMsg?.type === 'audio') {
+    preview = '🎵 Voice Message';
+  } else if (lastMsg?.type === 'file') {
+    preview = '📎 File';
+  }
   return (
     <div 
       onClick={onClick}
