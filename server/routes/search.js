@@ -67,13 +67,13 @@ router.get('/', (req, res) => {
 
     // 2. Type Filter
     if (activeFilter === 'image') {
-      sql += ` AND m.type = 'image'`;
+      sql += ` AND (m.type = 'image' OR m.file_name LIKE '%.png' OR m.file_name LIKE '%.jpg' OR m.file_name LIKE '%.jpeg' OR m.file_name LIKE '%.gif' OR m.file_name LIKE '%.webp')`;
     } else if (activeFilter === 'video') {
-      sql += ` AND m.type = 'video'`;
+      sql += ` AND (m.type = 'video' OR m.file_name LIKE '%.mp4' OR m.file_name LIKE '%.webm' OR m.file_name LIKE '%.mov' OR m.file_name LIKE '%.mkv')`;
     } else if (activeFilter === 'audio') {
-      sql += ` AND m.type = 'audio'`;
+      sql += ` AND (m.type = 'audio' OR m.file_name LIKE '%.mp3' OR m.file_name LIKE '%.wav' OR m.file_name LIKE '%.ogg' OR m.file_name LIKE '%.m4a')`;
     } else if (activeFilter === 'document') {
-      sql += ` AND m.type IN ('document', 'file')`;
+      sql += ` AND m.file_url IS NOT NULL AND m.type NOT IN ('image', 'video', 'audio') AND m.file_name NOT LIKE '%.png' AND m.file_name NOT LIKE '%.jpg' AND m.file_name NOT LIKE '%.jpeg' AND m.file_name NOT LIKE '%.gif' AND m.file_name NOT LIKE '%.webp' AND m.file_name NOT LIKE '%.mp4' AND m.file_name NOT LIKE '%.webm' AND m.file_name NOT LIKE '%.mp3'`;
     } else if (activeFilter === 'link') {
       sql += ` AND (m.content LIKE '%http://%' OR m.content LIKE '%https://%')`;
     }
