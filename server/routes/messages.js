@@ -604,6 +604,7 @@ router.put('/conversations/:id/theme', (req, res) => {
  */
 router.put('/conversations/:id/wallpaper', (req, res) => {
   try {
+    const db = req.app.get('db');
     const userId = req.user.id;
     const conversationId = req.params.id;
     const { wallpaper } = req.body;
