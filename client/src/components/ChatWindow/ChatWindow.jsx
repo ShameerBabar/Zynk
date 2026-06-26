@@ -16,7 +16,7 @@ import './ChatWindow.css';
 import ThemeRenderer from './ThemeRenderer';
 import ChatThemeModal from './ChatThemeModal';
 
-export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall }) {
+export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall, onThemeChange }) {
   const targetMessageId = conversation.targetMessageId;
   const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered } = useMessages(conversation.id, targetMessageId);
   const { socket, setActiveConversationId } = useSocketContext();
@@ -461,6 +461,9 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
               localStorage.setItem('zynk_theme_settings', JSON.stringify({ enabled: newEnabled, intensity: newIntensity }));
               
               await put(`/messages/conversations/${conversation.id}/theme`, { theme: newTheme === 'default' ? null : newTheme });
+              if (onThemeChange) {
+                onThemeChange(newTheme);
+              }
               setShowThemeModal(false);
             } catch (error) {
               console.error('Failed to update theme:', error);

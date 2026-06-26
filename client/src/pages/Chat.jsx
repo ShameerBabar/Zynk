@@ -395,6 +395,11 @@ export default function Chat() {
               callType: type,
               isInitiator: true
             })}
+            onThemeChange={(newTheme) => {
+              setConversations(prev => prev.map(c => 
+                c.id === selectedConversation.id ? { ...c, theme: newTheme } : c
+              ));
+            }}
           />
         ) : (
           <div className="flex-center" style={{ width: '100%', height: '100%', flexDirection: 'column', background: 'var(--bg-chat)', backgroundImage: 'var(--chat-pattern)' }}>
