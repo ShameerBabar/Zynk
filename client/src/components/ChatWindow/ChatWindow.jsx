@@ -11,6 +11,7 @@ import InChatSearch from './InChatSearch';
 import { formatLastSeen, parseTimestamp, formatDateSeparator } from '../../utils/formatTime';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { useTheme } from '../../context/ThemeContext';
+import { get } from '../../utils/api';
 import './ChatWindow.css';
 
 export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall }) {
@@ -33,6 +34,8 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   const [inChatTargetId, setInChatTargetId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMatchIds, setSearchMatchIds] = useState(new Set());
+  // eventsMap: message_id -> event object (for messages that spawned events)
+  const [eventsMap, setEventsMap] = useState({});
   // Local members state so adding members updates the panel live
   const [groupMembers, setGroupMembers] = useState(conversation.members || []);
 
@@ -63,6 +66,40 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     setShowSearch(false);
     setInChatTargetId(null);
   }, [conversation.id]);
+
+  // Fetch events for this conversation on mount / conversation change
+  useEffect(() => {
+    let cancelled = false;
+    const fetchEvents = async () => {
+      try {
+        const data = await get(`/events?conversationId=${conversation.id}`);
+        if (cancelled) return;
+        const map = {};
+        (data.events || []).forEach(ev => {
+          if (ev.message_id) map[ev.message_id] = ev;
+        });
+        setEventsMap(map);
+      } catch (_) {
+        // silently ignore — events are non-critical
+      }
+    };
+    fetchEvents();
+    return () => { cancelled = true; };
+  }, [conversation.id]);
+
+  // Helper to upsert an event into eventsMap
+  const upsertEvent = useCallback((ev) => {
+    if (!ev || !ev.message_id) return;
+    setEventsMap(prev => ({ ...prev, [ev.message_id]: ev }));
+  }, []);
+
+  const removeEvent = useCallback((eventId) => {
+    setEventsMap(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(k => { if (next[k].id === eventId) delete next[k]; });
+      return next;
+    });
+  }, []);
 
   // Real-time: update member list when someone is added
   useEffect(() => {
@@ -113,6 +150,19 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
       updatePoll(pollUpdateData.messageId, pollUpdateData);
     };
 
+    const handleEventCreated = (ev) => {
+      if (ev.conversation_id === conversation.id) upsertEvent(ev);
+    };
+    const handleEventUpdated = (ev) => {
+      if (ev.conversation_id === conversation.id) upsertEvent(ev);
+    };
+    const handleEventRsvpUpdated = (ev) => {
+      if (ev.conversation_id === conversation.id) upsertEvent(ev);
+    };
+    const handleEventDeleted = ({ eventId, conversationId }) => {
+      if (conversationId === conversation.id) removeEvent(eventId);
+    };
+
     const handleConversationRead = ({ conversationId, userId }) => {
       if (conversationId === conversation.id) {
         markMessagesRead(userId);
@@ -135,6 +185,10 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     socket.on('message_deleted', handleMessageDeleted);
     socket.on('message_edited', handleMessageEdited);
     socket.on('poll_updated', handlePollUpdated);
+    socket.on('event_created', handleEventCreated);
+    socket.on('event_updated', handleEventUpdated);
+    socket.on('event_rsvp_updated', handleEventRsvpUpdated);
+    socket.on('event_deleted', handleEventDeleted);
     socket.on('conversation_read', handleConversationRead);
     socket.on('message_delivered', handleMessageDelivered);
     socket.on('messages_delivered', handleMessagesDelivered);
@@ -146,11 +200,15 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
       socket.off('message_deleted', handleMessageDeleted);
       socket.off('message_edited', handleMessageEdited);
       socket.off('poll_updated', handlePollUpdated);
+      socket.off('event_created', handleEventCreated);
+      socket.off('event_updated', handleEventUpdated);
+      socket.off('event_rsvp_updated', handleEventRsvpUpdated);
+      socket.off('event_deleted', handleEventDeleted);
       socket.off('conversation_read', handleConversationRead);
       socket.off('message_delivered', handleMessageDelivered);
       socket.off('messages_delivered', handleMessagesDelivered);
     };
-  }, [socket, conversation.id, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered]);
+  }, [socket, conversation.id, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered, upsertEvent, removeEvent]);
 
   const scrollToBottom = (behavior = 'auto') => {
     const scroll = () => messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
@@ -337,6 +395,9 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
                   isSelf={isSelf} 
                   onDeleteForMe={handleDeleteForMe}
                   searchQuery={searchMatchIds.has(msg.id) ? searchQuery : ''}
+                  event={eventsMap[msg.id] || null}
+                  onEventCreated={(ev) => upsertEvent(ev)}
+                  onEventUpdated={(ev) => upsertEvent(ev)}
                 />
               </div>
             </React.Fragment>

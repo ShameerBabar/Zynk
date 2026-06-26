@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSocketContext } from '../../context/SocketContext';
 import { formatMessageTime } from '../../utils/formatTime';
 import { getFileUrl } from '../../utils/constants';
 import VoiceMessagePlayer from './VoiceMessagePlayer';
 import PollBubble from './PollBubble';
+import EventBubble from './EventBubble';
+import EventDetectionBar from './EventDetectionBar';
 import { showToast } from '../Common/Toast';
 import { post } from '../../utils/api';
+import { detectEvent } from '../../utils/detectEvent';
 import './MessageBubble.css';
 
-export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe, searchQuery = '' }) {
+export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe, searchQuery = '', event = null, onEventCreated, onEventUpdated }) {
   // Highlight all occurrences of searchQuery inside text
   const HighlightedText = ({ text, query }) => {
     if (!query || !text) return <>{text}</>;
@@ -32,6 +35,13 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe,
   };
   const { user } = useAuth();
   const { deleteMessage, editMessage } = useSocketContext();
+
+  // Detect event info from message text (memoised so it only re-runs when message content changes)
+  const detectionResult = useMemo(() => {
+    if (message.type !== 'text' || !message.content || message.is_deleted === 1 || event) return null;
+    const result = detectEvent(message.content);
+    return result.detected ? result : null;
+  }, [message.id, message.content, message.type, message.is_deleted, event]);
   const isMine = message.sender_id === user.id;
   const isDeleted = message.is_deleted === 1;
 
@@ -198,6 +208,10 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe,
               )}
             </>
           )}
+          {/* Confirmed event bubble — shown instead of detection bar once event is created */}
+          {event && message.type === 'text' && (
+            <EventBubble event={event} onUpdated={onEventUpdated} />
+          )}
         </div>
         
         <div className="message-meta">
@@ -218,6 +232,16 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe,
           )}
         </div>
       </div>
+
+      {/* Event detection suggestion bar — only for text messages without a confirmed event */}
+      {detectionResult && !event && (
+        <EventDetectionBar
+          message={message}
+          conversationId={message.conversation_id}
+          detection={detectionResult}
+          onEventCreated={onEventCreated}
+        />
+      )}
 
       {showMenu && (
         <div 

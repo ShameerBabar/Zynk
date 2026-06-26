@@ -316,6 +316,39 @@ function initializeDatabase(db) {
         ON blocked_users(blocker_id);
     `);
 
+    // ── Events ────────────────────────────────────────────────────────────
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS events (
+        id              TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL,
+        message_id      TEXT,
+        creator_id      TEXT NOT NULL,
+        title           TEXT NOT NULL,
+        event_date      TEXT,
+        event_time      TEXT,
+        location        TEXT,
+        notes           TEXT,
+        created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+        FOREIGN KEY (creator_id)      REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_events_conversation
+        ON events(conversation_id, event_date);
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS event_rsvps (
+        event_id   TEXT NOT NULL,
+        user_id    TEXT NOT NULL,
+        status     TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (event_id, user_id),
+        FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE
+      );
+    `);
+
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');

@@ -7,6 +7,7 @@ import SettingsPanel from '../components/Settings/SettingsPanel';
 import GroupCreate from '../components/Group/GroupCreate';
 import NewChatPanel from '../components/Sidebar/NewChatPanel';
 import FriendsPanel from '../components/Sidebar/FriendsPanel';
+import EventsPanel from '../components/Events/EventsPanel';
 import { useSocketContext } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import CallModal from '../components/ChatWindow/CallModal';
@@ -21,6 +22,7 @@ export default function Chat() {
   const [showGroupCreate, setShowGroupCreate] = useState(false);
   const [showNewChatPanel, setShowNewChatPanel] = useState(false);
   const [showFriendsPanel, setShowFriendsPanel] = useState(false);
+  const [showEventsPanel, setShowEventsPanel] = useState(false);
   const [activeCallData, setActiveCallData] = useState(null);
   const [activeGroupCall, setActiveGroupCall] = useState(null);
   const [incomingGroupCall, setIncomingGroupCall] = useState(null);
@@ -341,10 +343,17 @@ export default function Chat() {
           onNewGroup={() => setShowGroupCreate(true)}
           onOpenNewChatPanel={() => setShowNewChatPanel(true)}
           onOpenFriendsPanel={() => setShowFriendsPanel(true)}
+          onOpenEventsPanel={() => setShowEventsPanel(true)}
           onNewChat={startPrivateChat}
         />
 
         {/* Overlay panels — rendered inside sidebar wrapper so they slide over the sidebar */}
+        {showEventsPanel && (
+          <EventsPanel
+            onClose={() => setShowEventsPanel(false)}
+            onNavigate={(convId) => handleSelectConversation(convId)}
+          />
+        )}
         {showFriendsPanel && (
           <FriendsPanel
             onClose={() => setShowFriendsPanel(false)}
