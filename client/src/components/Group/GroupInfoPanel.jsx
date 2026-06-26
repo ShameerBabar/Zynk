@@ -5,7 +5,7 @@ import { getFileUrl } from '../../utils/constants';
 import { useAuth } from '../../context/AuthContext';
 import { useSocketContext } from '../../context/SocketContext';
 
-export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated, onUpdateConversation, messages = [] }) {
+export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated, onUpdateConversation, messages = [], onOpenThemeModal }) {
   const { user: currentUser } = useAuth();
   const [members, setMembers] = useState(conversation.members || []);
   const [showAddMembers, setShowAddMembers] = useState(false);
@@ -248,11 +248,20 @@ export default function GroupInfoPanel({ conversation, onClose, onMembersUpdated
             position: 'relative', cursor: 'pointer', transition: 'background 0.2s'
           }}>
             <div style={{
-              position: 'absolute', top: '2px', left: isMuted ? '20px' : '2px',
               width: '18px', height: '18px', borderRadius: '50%', background: 'white',
-              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+              position: 'absolute', top: '2px', left: isMuted ? '20px' : '2px', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
             }} />
           </div>
+        </div>
+
+        {/* Action Bar (Theme) */}
+        <div 
+          onClick={onOpenThemeModal}
+          className="interactive"
+          style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 500 }}>Chat Theme</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{conversation.theme && conversation.theme !== 'default' ? conversation.theme.charAt(0).toUpperCase() + conversation.theme.slice(1) : 'Default'} ›</span>
         </div>
 
         {/* Tabs */}

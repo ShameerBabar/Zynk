@@ -87,6 +87,7 @@ function initializeDatabase(db) {
         role            TEXT DEFAULT 'member',
         joined_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
         is_muted        INTEGER DEFAULT 0,
+        theme           TEXT,
         PRIMARY KEY (conversation_id, user_id),
         FOREIGN KEY (conversation_id) REFERENCES conversations(id),
         FOREIGN KEY (user_id)         REFERENCES users(id)
@@ -95,6 +96,12 @@ function initializeDatabase(db) {
 
     try {
       db.exec('ALTER TABLE conversation_members ADD COLUMN is_muted INTEGER DEFAULT 0');
+    } catch (e) {
+      // Ignore if column already exists
+    }
+
+    try {
+      db.exec('ALTER TABLE conversation_members ADD COLUMN theme TEXT');
     } catch (e) {
       // Ignore if column already exists
     }

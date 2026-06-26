@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { post } from '../../utils/api';
+import { getFileUrl } from '../../utils/constants';
 import { showToast } from '../Common/Toast';
 import EventModal from './EventModal';
 import './EventBubble.css';
@@ -10,15 +11,14 @@ export default function EventBubble({ event: initialEvent, onUpdated }) {
   const [event, setEvent] = useState(initialEvent);
   const [showEdit, setShowEdit] = useState(false);
 
-  // Keep in sync when parent passes updated event (via socket)
   React.useEffect(() => {
     setEvent(initialEvent);
   }, [initialEvent]);
 
   const myRsvp = event.rsvps?.find(r => r.user_id === user.id)?.status || null;
-  const going = event.rsvps?.filter(r => r.status === 'going').length || 0;
-  const maybe = event.rsvps?.filter(r => r.status === 'maybe').length || 0;
-  const notGoing = event.rsvps?.filter(r => r.status === 'not_going').length || 0;
+  const going    = event.rsvps?.filter(r => r.status === 'going')     || [];
+  const maybe    = event.rsvps?.filter(r => r.status === 'maybe')     || [];
+  const notGoing = event.rsvps?.filter(r => r.status === 'not_going') || [];
   const isCreator = event.creator_id === user.id;
 
   const handleRsvp = async (status) => {
@@ -92,25 +92,32 @@ export default function EventBubble({ event: initialEvent, onUpdated }) {
           )}
         </div>
 
+        {/* RSVP rows with avatar stacks */}
         <div className="event-bubble-rsvp">
-          <button
-            className={`event-bubble-rsvp-btn going ${myRsvp === 'going' ? 'active' : ''}`}
-            onClick={() => handleRsvp('going')}
-          >
-            ✓ Going{going > 0 ? ` (${going})` : ''}
-          </button>
-          <button
-            className={`event-bubble-rsvp-btn maybe ${myRsvp === 'maybe' ? 'active' : ''}`}
-            onClick={() => handleRsvp('maybe')}
-          >
-            ? Maybe{maybe > 0 ? ` (${maybe})` : ''}
-          </button>
-          <button
-            className={`event-bubble-rsvp-btn not-going ${myRsvp === 'not_going' ? 'active' : ''}`}
-            onClick={() => handleRsvp('not_going')}
-          >
-            ✗ Can't Go{notGoing > 0 ? ` (${notGoing})` : ''}
-          </button>
+          <RsvpRow
+            label="✓ Going"
+            status="going"
+            users={going}
+            isActive={myRsvp === 'going'}
+            colorClass="going"
+            onRsvp={() => handleRsvp('going')}
+          />
+          <RsvpRow
+            label="? Maybe"
+            status="maybe"
+            users={maybe}
+            isActive={myRsvp === 'maybe'}
+            colorClass="maybe"
+            onRsvp={() => handleRsvp('maybe')}
+          />
+          <RsvpRow
+            label="✗ Can't Go"
+            status="not_going"
+            users={notGoing}
+            isActive={myRsvp === 'not_going'}
+            colorClass="not-going"
+            onRsvp={() => handleRsvp('not_going')}
+          />
         </div>
       </div>
 
@@ -127,5 +134,40 @@ export default function EventBubble({ event: initialEvent, onUpdated }) {
         />
       )}
     </>
+  );
+}
+
+function RsvpRow({ label, users, isActive, colorClass, onRsvp }) {
+  const MAX_AVATARS = 4;
+  const count = users.length;
+
+  return (
+    <div className={`event-rsvp-row ${colorClass} ${isActive ? 'active' : ''}`} onClick={onRsvp}>
+      <span className="event-rsvp-label">
+        {label}{count > 0 ? ` (${count})` : ''}
+      </span>
+      {count > 0 && (
+        <div className="event-rsvp-avatars">
+          {users.slice(0, MAX_AVATARS).map((r) => (
+            <div
+              key={r.user_id}
+              className="event-rsvp-avatar"
+              title={r.display_name || r.username}
+            >
+              {r.avatar_url ? (
+                <img src={getFileUrl(r.avatar_url)} alt={r.display_name || r.username} />
+              ) : (
+                <span>{(r.display_name || r.username || '?')[0].toUpperCase()}</span>
+              )}
+            </div>
+          ))}
+          {count > MAX_AVATARS && (
+            <div className="event-rsvp-avatar event-rsvp-avatar-more">
+              +{count - MAX_AVATARS}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

@@ -11,8 +11,10 @@ import InChatSearch from './InChatSearch';
 import { formatLastSeen, parseTimestamp, formatDateSeparator } from '../../utils/formatTime';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { useTheme } from '../../context/ThemeContext';
-import { get } from '../../utils/api';
+import { get, put } from '../../utils/api';
 import './ChatWindow.css';
+import ThemeRenderer from './ThemeRenderer';
+import ChatThemeModal from './ChatThemeModal';
 
 export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall }) {
   const targetMessageId = conversation.targetMessageId;
@@ -39,6 +41,17 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   // Local members state so adding members updates the panel live
   const [groupMembers, setGroupMembers] = useState(conversation.members || []);
 
+  // Theme settings
+  const [chatTheme, setChatTheme] = useState(conversation.theme || 'default');
+  const [showThemeModal, setShowThemeModal] = useState(false);
+  const [themeSettings, setThemeSettings] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('zynk_theme_settings')) || { enabled: true, intensity: 0.5 };
+    } catch {
+      return { enabled: true, intensity: 0.5 };
+    }
+  });
+
   const handleDeleteForMe = (messageId) => {
     setDeletedForMeIds(prev => {
       const next = [...prev, messageId];
@@ -59,13 +72,14 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     };
   }, [conversation.id, setActiveConversationId]);
 
-  // Keep groupMembers in sync when conversation prop changes
+  // Keep groupMembers and theme in sync when conversation prop changes
   useEffect(() => {
     setGroupMembers(conversation.members || []);
+    setChatTheme(conversation.theme || 'default');
     // Reset search when switching conversations
     setShowSearch(false);
     setInChatTargetId(null);
-  }, [conversation.id]);
+  }, [conversation.id, conversation.theme, conversation.members]);
 
   // Fetch events for this conversation on mount / conversation change
   useEffect(() => {
@@ -374,8 +388,13 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
         />
       )}
       
-      <div className="messages-area">
-        {loading && <div className="flex-center" style={{ padding: '20px' }}><div className="spinner"></div></div>}
+      <div className="messages-area" style={{ position: 'relative' }}>
+        <ThemeRenderer 
+          theme={chatTheme} 
+          intensity={themeSettings.intensity} 
+          enabled={themeSettings.enabled} 
+        />
+        {loading && <div className="flex-center" style={{ padding: '20px', zIndex: 1 }}><div className="spinner"></div></div>}
         
         {messages.filter(msg => !deletedForMeIds.includes(msg.id)).map((msg, index, filteredArray) => {
           const prevMsg = filteredArray[index - 1];
@@ -414,6 +433,7 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
           onClose={() => setShowGroupInfo(false)}
           onMembersUpdated={setGroupMembers}
           messages={messages}
+          onOpenThemeModal={() => setShowThemeModal(true)}
         />
       )}
 
@@ -425,6 +445,27 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
           onMuteChange={() => {}}
           onBlockChange={(blocked) => setIsBlocked(blocked)}
           messages={messages}
+          onOpenThemeModal={() => setShowThemeModal(true)}
+        />
+      )}
+
+      {showThemeModal && (
+        <ChatThemeModal
+          currentTheme={chatTheme}
+          onClose={() => setShowThemeModal(false)}
+          onSave={async (newTheme, newEnabled, newIntensity) => {
+            try {
+              // Update local state and DB
+              setChatTheme(newTheme);
+              setThemeSettings({ enabled: newEnabled, intensity: newIntensity });
+              localStorage.setItem('zynk_theme_settings', JSON.stringify({ enabled: newEnabled, intensity: newIntensity }));
+              
+              await put(`/conversations/${conversation.id}/theme`, { theme: newTheme === 'default' ? null : newTheme });
+              setShowThemeModal(false);
+            } catch (error) {
+              console.error('Failed to update theme:', error);
+            }
+          }}
         />
       )}
     </div>

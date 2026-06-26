@@ -1,0 +1,108 @@
+.theme-renderer-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0; /* Behind messages, but above chat background */
+  overflow: hidden;
+}
+
+.theme-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Ocean Theme */
+.theme-ocean-waves {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+}
+
+.theme-ocean-waves .wave {
+  position: absolute;
+  bottom: 0;
+  width: 200%;
+  height: 100%;
+  background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1200 120" xmlns="http://www.w3.org/2000/svg"><path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25" fill="%230ea5e9"/><path d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05c38.3,29.08,89.5,36.13,137.3,31,50.1-5.39,94.9-32.14,144-42.85,55.4-12.07,114.7-4.4,167,11.33,52.4,15.79,102.7,40.17,157,48,59,8.5,119.8,2,176-14.65,58.8-17.41,114.6-43.21,176-50.62,49-5.83,99.9,1.15,148,15.93V0Z" opacity=".5" fill="%230284c7"/><path d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z" fill="%230369a1"/></svg>') repeat-x;
+  background-size: 1000px 200px;
+  animation: waveAnimation 15s linear infinite;
+  transform: scaleY(-1); /* Flip so waves are at bottom */
+  bottom: -20px;
+}
+
+.theme-ocean-waves .wave1 {
+  z-index: 1;
+  opacity: 0.5;
+  animation-duration: 20s;
+}
+
+.theme-ocean-waves .wave2 {
+  z-index: 2;
+  opacity: 0.7;
+  animation-duration: 15s;
+  animation-direction: reverse;
+}
+
+@keyframes waveAnimation {
+  0% { transform: scaleY(-1) translateX(0); }
+  100% { transform: scaleY(-1) translateX(-1000px); }
+}
+
+/* Aurora Theme */
+.theme-aurora-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  overflow: hidden;
+  filter: blur(60px);
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  animation: auroraFloat 20s infinite alternate ease-in-out;
+  opacity: 0.6;
+}
+
+.aurora-blob.a1 {
+  width: 300px;
+  height: 300px;
+  background: rgba(16, 185, 129, 0.4);
+  top: -100px;
+  left: -50px;
+  animation-delay: 0s;
+}
+
+.aurora-blob.a2 {
+  width: 400px;
+  height: 400px;
+  background: rgba(59, 130, 246, 0.4);
+  top: -150px;
+  right: -100px;
+  animation-delay: -5s;
+}
+
+.aurora-blob.a3 {
+  width: 250px;
+  height: 250px;
+  background: rgba(139, 92, 246, 0.3);
+  top: 50px;
+  left: 30%;
+  animation-delay: -10s;
+}
+
+@keyframes auroraFloat {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, 20px) scale(1.1); }
+  66% { transform: translate(-20px, 40px) scale(0.9); }
+  100% { transform: translate(10px, -10px) scale(1.05); }
+}

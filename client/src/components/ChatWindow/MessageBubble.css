@@ -116,6 +116,20 @@
   height: 14px;
 }
 
+/* On sent (teal) bubbles — force white ticks & timestamp so they're always visible */
+.message-bubble.sent .message-time {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.message-bubble.sent .message-status {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.message-bubble.sent .message-status.read {
+  color: #ffffff;
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.4));
+}
+
 /* Context Menu Styling */
 .context-menu {
   position: fixed;

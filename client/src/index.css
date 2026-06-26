@@ -1,4 +1,4 @@
-﻿/* CSS Reset */
+/* CSS Reset */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* CSS Custom Properties — Zynk Premium Modern Theme */
@@ -285,6 +285,11 @@ input, textarea {
   width: 100vw;
   overflow: hidden;
   position: relative;
+  /* iOS Safe Area Padding to prevent notch overlap */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Sidebar wrapper */

@@ -39,7 +39,7 @@ export default function SettingsPanel({ onClose }) {
 
   // Push notification diagnostics states
   const [notificationPermission, setNotificationPermission] = useState(
-    typeof window !== 'undefined' ? Notification.permission : 'unknown'
+    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
   );
   const [fcmSupported, setFcmSupported] = useState(false);
   const [fcmToken, setFcmToken] = useState(localStorage.getItem('zynk_fcm_token') || 'None');
@@ -127,6 +127,10 @@ export default function SettingsPanel({ onClose }) {
     window.deferredPrompt = null;
     setDeferredPrompt(null);
   };
+
+  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = typeof window !== 'undefined' && (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches);
+  const showIOSInstructions = isIOS && !isStandalone;
 
   const handleSave = async () => {
     try {
@@ -229,21 +233,38 @@ export default function SettingsPanel({ onClose }) {
           </button>
         </div>
 
-        {/* PWA Install Button */}
-        {deferredPrompt && (
+        {/* PWA Install Button / iOS Instructions */}
+        {(deferredPrompt || showIOSInstructions) && (
           <div style={{ paddingBottom: '15px', borderBottom: '1px solid var(--border-color)' }}>
             <h4 style={{ color: 'var(--text-primary)', fontSize: '15px', marginBottom: '12px', fontWeight: 600 }}>Install App</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '4px', lineHeight: 1.4 }}>Install Zynk on your device home screen for a fast, native app experience.</div>
-              <button 
-                onClick={handleInstallApp} 
-                style={{ width: '100%', background: 'var(--accent-primary)', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: 'background var(--transition-fast)' }}
-                onMouseOver={e => e.currentTarget.style.background = 'var(--accent-primary-hover)'}
-                onMouseOut={e => e.currentTarget.style.background = 'var(--accent-primary)'}
-              >
-                Install Zynk App
-              </button>
-            </div>
+            
+            {showIOSInstructions ? (
+              <div style={{ background: 'var(--bg-app)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <div style={{ color: 'var(--text-primary)', fontSize: '13px', marginBottom: '8px', fontWeight: 500 }}>How to install on iPhone:</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <span>1.</span>
+                    <span>Tap the <b>Share</b> button in Safari's bottom menu bar.</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <span>2.</span>
+                    <span>Scroll down and tap <b>Add to Home Screen</b>.</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '4px', lineHeight: 1.4 }}>Install Zynk on your device home screen for a fast, native app experience.</div>
+                <button 
+                  onClick={handleInstallApp} 
+                  style={{ width: '100%', background: 'var(--accent-primary)', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: 'background var(--transition-fast)' }}
+                  onMouseOver={e => e.currentTarget.style.background = 'var(--accent-primary-hover)'}
+                  onMouseOut={e => e.currentTarget.style.background = 'var(--accent-primary)'}
+                >
+                  Install Zynk App
+                </button>
+              </div>
+            )}
           </div>
         )}
 
