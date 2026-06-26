@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
 import ThemeRenderer from './ThemeRenderer';
 
 const THEMES = [
@@ -15,23 +16,55 @@ const THEMES = [
 
 export default function ChatThemeModal({ currentTheme = 'default', onClose, onSave }) {
   const [selectedTheme, setSelectedTheme] = useState(currentTheme || 'default');
-  const [intensity, setIntensity] = useState(0.5);
-  const [enabled, setEnabled] = useState(true);
+  const [intensity, setIntensity] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('zynk_theme_settings'))?.intensity ?? 0.5;
+    } catch { return 0.5; }
+  });
+  const [enabled, setEnabled] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('zynk_theme_settings'))?.enabled ?? true;
+    } catch { return true; }
+  });
 
   const handleSave = () => {
-    // If not enabled, we just save 'default'
-    onSave(enabled ? selectedTheme : 'default');
+    onSave(enabled ? selectedTheme : 'default', enabled, intensity);
   };
 
   return (
-    <div className="modal-overlay glass" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-        <div className="modal-header">
-          <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Chat Theme</h2>
-          <button className="icon-btn interactive" onClick={onClose}><X size={20} /></button>
-        </div>
+    <AnimatePresence>
+      <motion.div 
+        className="modal-overlay"
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div 
+          className="modal-content glass"
+          style={{
+            width: '90%', maxWidth: '450px', maxHeight: '90vh',
+            background: 'var(--bg-modal)', borderRadius: 'var(--radius-lg)',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+            border: '1px solid var(--border-light)'
+          }}
+          initial={{ scale: 0.95, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Chat Theme</h2>
+            <button style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }} onClick={onClose}><X size={20} /></button>
+          </div>
 
-        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {/* Preview Window */}
           <div style={{ 
@@ -104,13 +137,14 @@ export default function ChatThemeModal({ currentTheme = 'default', onClose, onSa
               </div>
             )}
           </div>
-        </div>
+          </div>
 
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave}>Save Theme</button>
-        </div>
-      </div>
-    </div>
+          <div style={{ padding: '15px 20px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn-primary" onClick={handleSave}>Save Theme</button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
