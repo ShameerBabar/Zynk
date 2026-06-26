@@ -13,7 +13,8 @@ export default function UserInfoPanel({
   onMuteChange,
   onBlockChange,
   messages = [],
-  onOpenThemeModal
+  onOpenThemeModal,
+  onOpenWallpaperModal
 }) {
   const { user: currentUser } = useAuth();
   const { socket } = useSocketContext();
@@ -208,6 +209,16 @@ export default function UserInfoPanel({
         >
           <span style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 500 }}>Chat Theme</span>
           <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{conversation.theme && conversation.theme !== 'default' ? conversation.theme.charAt(0).toUpperCase() + conversation.theme.slice(1) : 'Default'} ›</span>
+        </div>
+
+        {/* Action Bar (Wallpaper) */}
+        <div 
+          onClick={onOpenWallpaperModal}
+          className="interactive"
+          style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 500 }}>Chat Wallpaper</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{conversation.wallpaper ? 'Custom' : 'Default'} ›</span>
         </div>
 
         {/* Tabs */}

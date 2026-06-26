@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSocketContext } from '../../context/SocketContext';
 import { formatMessageTime } from '../../utils/formatTime';
@@ -12,7 +13,7 @@ import { post } from '../../utils/api';
 import { detectEvent } from '../../utils/detectEvent';
 import './MessageBubble.css';
 
-export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe, searchQuery = '', event = null, onEventCreated, onEventUpdated }) {
+export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe, searchQuery = '', event = null, onEventCreated, onEventUpdated, onForward }) {
   // Highlight all occurrences of searchQuery inside text
   const HighlightedText = ({ text, query }) => {
     if (!query || !text) return <>{text}</>;
@@ -55,18 +56,35 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe,
     if (showMenu) {
       window.addEventListener('click', handleCloseMenu);
       window.addEventListener('contextmenu', handleCloseMenu);
+      window.addEventListener('close-all-menus', handleCloseMenu);
     }
     return () => {
       window.removeEventListener('click', handleCloseMenu);
       window.removeEventListener('contextmenu', handleCloseMenu);
+      window.removeEventListener('close-all-menus', handleCloseMenu);
     };
   }, [showMenu]);
 
   const handleContextMenu = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Dispatch event to close any other open menus
+    window.dispatchEvent(new Event('close-all-menus'));
+    
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    // Adjust position if it would overflow the screen
+    if (window.innerHeight - y < 240) {
+      y = Math.max(10, y - 240); // Shift upwards, ensuring it doesn't go off-screen top
+    }
+    if (window.innerWidth - x < 180) {
+      x = Math.max(10, x - 180); // Shift leftwards
+    }
+
     setShowMenu(true);
-    setMenuPosition({ x: e.clientX, y: e.clientY });
+    setMenuPosition({ x, y });
   };
 
 
@@ -243,7 +261,7 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe,
         />
       )}
 
-      {showMenu && (
+      {showMenu && createPortal(
         <div 
           className="context-menu"
           onClick={(e) => e.stopPropagation()}
@@ -270,6 +288,15 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe,
               Copy
             </button>
           )}
+          {!isDeleted && (
+            <button 
+              onClick={() => { onForward?.(message); setShowMenu(false); }}
+              className="context-menu-item"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+              Forward
+            </button>
+          )}
           {isMine && !isDeleted && (
             <button 
               onClick={() => { deleteMessage(message.id, message.conversation_id); setShowMenu(false); }}
@@ -286,7 +313,8 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe,
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             Delete for Me
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

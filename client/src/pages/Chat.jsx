@@ -12,12 +12,21 @@ import { useSocketContext } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
 import CallModal from '../components/ChatWindow/CallModal';
 import GroupCallModal from '../components/ChatWindow/GroupCallModal';
+import ForwardModal from '../components/ChatWindow/ForwardModal';
+import { ErrorBoundary } from '../components/Common/ErrorBoundary';
 
 export default function Chat() {
   const { socket } = useSocketContext();
   const { user: currentUser } = useAuth();
   const [conversations, setConversations] = useState([]);
-  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [selectedConversation, setSelectedConversation] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('zynk_active_chat');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [showSettings, setShowSettings] = useState(false);
   const [showGroupCreate, setShowGroupCreate] = useState(false);
   const [showNewChatPanel, setShowNewChatPanel] = useState(false);
@@ -26,6 +35,7 @@ export default function Chat() {
   const [activeCallData, setActiveCallData] = useState(null);
   const [activeGroupCall, setActiveGroupCall] = useState(null);
   const [incomingGroupCall, setIncomingGroupCall] = useState(null);
+  const [forwardMessage, setForwardMessage] = useState(null);
 
   const location = useLocation();
 
@@ -40,6 +50,14 @@ export default function Chat() {
   useEffect(() => {
     activeCallDataRef.current = activeCallData;
   }, [activeCallData]);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      sessionStorage.setItem('zynk_active_chat', JSON.stringify(selectedConversation));
+    } else {
+      sessionStorage.removeItem('zynk_active_chat');
+    }
+  }, [selectedConversation]);
 
   const activeGroupCallRef = useRef(activeGroupCall);
   useEffect(() => {
@@ -332,6 +350,19 @@ export default function Chat() {
     setSelectedConversation(normalized);
   };
 
+  const handleForwardSubmit = (conversationId, message) => {
+    if (!socket || !message) return;
+    
+    socket.emit('send_message', {
+      conversation_id: conversationId,
+      content: message.content,
+      type: message.type,
+      file_url: message.file_url,
+      file_name: message.file_name,
+      file_size: message.file_size
+    });
+  };
+
   return (
     <div className={`chat-layout ${selectedConversation ? 'has-selected-chat' : ''}`}>
       <div className="sidebar-wrapper">
@@ -400,6 +431,12 @@ export default function Chat() {
                 c.id === selectedConversation.id ? { ...c, theme: newTheme } : c
               ));
             }}
+            onWallpaperChange={(newWallpaper) => {
+              setConversations(prev => prev.map(c => 
+                c.id === selectedConversation.id ? { ...c, wallpaper: newWallpaper } : c
+              ));
+            }}
+            onForward={setForwardMessage}
           />
         ) : (
           <div className="flex-center" style={{ width: '100%', height: '100%', flexDirection: 'column', background: 'var(--bg-chat)', backgroundImage: 'var(--chat-pattern)' }}>
@@ -413,6 +450,13 @@ export default function Chat() {
           </div>
         )}
       </div>
+
+      <ForwardModal
+        message={forwardMessage}
+        conversations={conversations}
+        onClose={() => setForwardMessage(null)}
+        onForwardSubmit={handleForwardSubmit}
+      />
 
       {activeCallData && (
         <CallModal 

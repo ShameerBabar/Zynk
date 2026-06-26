@@ -37,7 +37,7 @@ router.get('/conversations', (req, res) => {
 
     // Get all conversations the user is a member of
     const conversations = db.prepare(`
-      SELECT c.id, c.type, c.name, c.avatar_url, c.created_by, c.created_at, cm.is_muted, cm.theme
+      SELECT c.id, c.type, c.name, c.avatar_url, c.created_by, c.created_at, cm.is_muted, cm.theme, cm.wallpaper
       FROM conversations c
       JOIN conversation_members cm ON cm.conversation_id = c.id
       WHERE cm.user_id = ?
@@ -594,6 +594,34 @@ router.put('/conversations/:id/theme', (req, res) => {
     res.json({ success: true, theme: theme || null });
   } catch (err) {
     console.error('Update conversation theme error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /conversations/:id/wallpaper
+ * Updates the wallpaper for the current user in this conversation.
+ */
+router.put('/conversations/:id/wallpaper', (req, res) => {
+  try {
+    const userId = req.user.id;
+    const conversationId = req.params.id;
+    const { wallpaper } = req.body;
+
+    const member = db.prepare('SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?').get(conversationId, userId);
+    if (!member) {
+      return res.status(403).json({ error: 'Not a member of this conversation' });
+    }
+
+    db.prepare(`
+      UPDATE conversation_members
+      SET wallpaper = ?
+      WHERE conversation_id = ? AND user_id = ?
+    `).run(wallpaper || null, conversationId, userId);
+
+    res.json({ success: true, wallpaper: wallpaper || null });
+  } catch (err) {
+    console.error('Update conversation wallpaper error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

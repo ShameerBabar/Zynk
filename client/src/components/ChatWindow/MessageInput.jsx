@@ -73,6 +73,12 @@ export default function MessageInput({ conversationId, isBlocked = false }) {
     
     setText('');
     stopTyping(conversationId);
+    
+    // Reset textarea height
+    setTimeout(() => {
+      const ta = document.getElementById('message-textarea');
+      if (ta) ta.style.height = 'auto';
+    }, 0);
   };
 
   const handleKeyDown = (e) => {
@@ -341,9 +347,14 @@ export default function MessageInput({ conversationId, isBlocked = false }) {
           
           <div className="input-wrapper">
             <textarea
+              id="message-textarea"
               placeholder={uploading ? "Processing upload..." : "Type a message"}
               value={text}
-              onChange={handleTextChange}
+              onChange={(e) => {
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                handleTextChange(e);
+              }}
               onKeyDown={handleKeyDown}
               disabled={uploading}
               rows={1}

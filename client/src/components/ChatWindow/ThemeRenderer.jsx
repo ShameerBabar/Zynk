@@ -109,12 +109,6 @@ export default function ThemeRenderer({ theme, intensity = 0.5, enabled = true }
 
     let lastTime = 0;
     const render = (time) => {
-      // Pause if tab is hidden
-      if (document.hidden) {
-        animationRef.current = requestAnimationFrame(render);
-        return;
-      }
-
       ctx.clearRect(0, 0, width, height);
 
       particlesRef.current.forEach((p) => {

@@ -15,8 +15,9 @@ import { get, put } from '../../utils/api';
 import './ChatWindow.css';
 import ThemeRenderer from './ThemeRenderer';
 import ChatThemeModal from './ChatThemeModal';
+import ChatWallpaperModal from './ChatWallpaperModal';
 
-export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall, onThemeChange }) {
+export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall, onThemeChange, onWallpaperChange, onForward }) {
   const targetMessageId = conversation.targetMessageId;
   const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered } = useMessages(conversation.id, targetMessageId);
   const { socket, setActiveConversationId } = useSocketContext();
@@ -42,8 +43,10 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   const [groupMembers, setGroupMembers] = useState(conversation.members || []);
 
   // Theme settings
-  const [chatTheme, setChatTheme] = useState(conversation.theme || 'default');
+  const chatTheme = conversation.theme || 'default';
+  const chatWallpaper = conversation.wallpaper || null;
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showWallpaperModal, setShowWallpaperModal] = useState(false);
   const [themeSettings, setThemeSettings] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('zynk_theme_settings')) || { enabled: true, intensity: 0.5 };
@@ -75,7 +78,6 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   // Keep groupMembers and theme in sync when switching conversations
   useEffect(() => {
     setGroupMembers(conversation.members || []);
-    setChatTheme(conversation.theme || 'default');
     // Reset search when switching conversations
     setShowSearch(false);
     setInChatTargetId(null);
@@ -165,10 +167,16 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     };
 
     const handleEventCreated = (ev) => {
-      if (ev.conversation_id === conversation.id) upsertEvent(ev);
+      if (ev.conversation_id === conversation.id) {
+        upsertEvent(ev);
+        scrollToBottom();
+      }
     };
     const handleEventUpdated = (ev) => {
-      if (ev.conversation_id === conversation.id) upsertEvent(ev);
+      if (ev.conversation_id === conversation.id) {
+        upsertEvent(ev);
+        scrollToBottom();
+      }
     };
     const handleEventRsvpUpdated = (ev) => {
       if (ev.conversation_id === conversation.id) upsertEvent(ev);
@@ -224,12 +232,13 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     };
   }, [socket, conversation.id, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered, upsertEvent, removeEvent]);
 
-  const scrollToBottom = (behavior = 'auto') => {
+  const scrollToBottom = (behavior = 'smooth') => {
     const scroll = () => messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
     scroll(); // Try immediately
     setTimeout(scroll, 100); // Try after DOM update
     setTimeout(scroll, 300); // Try after some images might have loaded
     setTimeout(scroll, 800); // Fallback for slower images
+    setTimeout(scroll, 1500); // Extra fallback for complex components
   };
 
   // Jump to a specific message from in-chat search (pulse highlight)
@@ -249,23 +258,34 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   useEffect(() => {
     // Handle both global search targetMessageId and in-chat search inChatTargetId
     const activeTarget = inChatTargetId || targetMessageId;
-    if (activeTarget && messages.some(m => m.id === activeTarget)) {
-      setTimeout(() => {
-        const el = document.getElementById(`message-${activeTarget}`);
-        if (el) {
+
+    if (activeTarget && messages.length > 0) {
+      const el = document.getElementById(`message-${activeTarget}`);
+      if (el) {
+        setTimeout(() => {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           el.classList.add('message-highlight-pulse');
           setTimeout(() => el.classList.remove('message-highlight-pulse'), 2000);
-        }
-      }, 100);
-    } else if (!activeTarget) {
-      scrollToBottom('auto');
+        }, 100);
+      }
     }
-  }, [messages.length, conversation.id, targetMessageId, inChatTargetId]);
+  }, [targetMessageId, inChatTargetId, messages.length]);
 
-  const customBgStyle = (wallpaper === 'custom' && currentUser?.chat_background_url)
-    ? { backgroundImage: `url(${getFileUrl(currentUser.chat_background_url)})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    : {};
+  useEffect(() => {
+    // Scroll down when new messages arrive if we were already at bottom
+    // We are simplifying to just always scroll to bottom on new message if no target
+    if (!targetMessageId && !inChatTargetId && messages.length > 0) {
+      // Small delay to allow DOM to render
+      setTimeout(() => scrollToBottom('smooth'), 100);
+    }
+  }, [messages.length, targetMessageId, inChatTargetId]);
+
+  let customBgStyle = {};
+  if (chatWallpaper) {
+    customBgStyle = { backgroundImage: `url(${getFileUrl(chatWallpaper)})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+  } else if (wallpaper === 'custom' && currentUser?.chat_background_url) {
+    customBgStyle = { backgroundImage: `url(${getFileUrl(currentUser.chat_background_url)})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+  }
 
   return (
     <div className="chat-window" style={customBgStyle}>
@@ -387,41 +407,52 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
           }}
         />
       )}
-      
+      <ThemeRenderer 
+        theme={chatTheme} 
+        intensity={themeSettings.intensity} 
+        enabled={themeSettings.enabled} 
+      />
+
       <div className="messages-area" style={{ position: 'relative' }}>
-        <ThemeRenderer 
-          theme={chatTheme} 
-          intensity={themeSettings.intensity} 
-          enabled={themeSettings.enabled} 
-        />
         {loading && <div className="flex-center" style={{ padding: '20px', zIndex: 1 }}><div className="spinner"></div></div>}
         
-        {messages.filter(msg => !deletedForMeIds.includes(msg.id)).map((msg, index, filteredArray) => {
-          const prevMsg = filteredArray[index - 1];
-          const showDate = !prevMsg || parseTimestamp(msg.created_at).toDateString() !== parseTimestamp(prevMsg.created_at).toDateString();
+        {(() => {
+          const validMessages = messages.filter(msg => !deletedForMeIds.includes(msg.id));
+          const grouped = [];
+          let currentGroup = null;
           
-          return (
-            <React.Fragment key={msg.id}>
-              {showDate && (
-                <div className="date-separator">
-                  <span>{formatDateSeparator(msg.created_at)}</span>
-                </div>
-              )}
-              <div id={`message-${msg.id}`}>
-                <MessageBubble 
-                  message={msg} 
-                  isGroup={!isPrivate} 
-                  isSelf={isSelf} 
-                  onDeleteForMe={handleDeleteForMe}
-                  searchQuery={searchMatchIds.has(msg.id) ? searchQuery : ''}
-                  event={eventsMap[msg.id] || null}
-                  onEventCreated={(ev) => upsertEvent(ev)}
-                  onEventUpdated={(ev) => upsertEvent(ev)}
-                />
+          validMessages.forEach(msg => {
+            const dateStr = parseTimestamp(msg.created_at).toDateString();
+            if (!currentGroup || currentGroup.dateStr !== dateStr) {
+              currentGroup = { dateStr, dateLabel: formatDateSeparator(msg.created_at), messages: [] };
+              grouped.push(currentGroup);
+            }
+            currentGroup.messages.push(msg);
+          });
+
+          return grouped.map((group) => (
+            <div key={group.dateStr} className="message-day-group" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div className="date-separator">
+                <span>{group.dateLabel}</span>
               </div>
-            </React.Fragment>
-          );
-        })}
+              {group.messages.map(msg => (
+                <div id={`message-${msg.id}`} key={msg.id}>
+                  <MessageBubble 
+                    message={msg} 
+                    isGroup={!isPrivate} 
+                    isSelf={isSelf} 
+                    onDeleteForMe={handleDeleteForMe}
+                    searchQuery={searchMatchIds.has(msg.id) ? searchQuery : ''}
+                    event={eventsMap[msg.id] || null}
+                    onEventCreated={(ev) => upsertEvent(ev)}
+                    onEventUpdated={(ev) => upsertEvent(ev)}
+                    onForward={onForward}
+                  />
+                </div>
+              ))}
+            </div>
+          ));
+        })()}
         <div ref={messagesEndRef} />
       </div>
       
@@ -434,6 +465,7 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
           onMembersUpdated={setGroupMembers}
           messages={messages}
           onOpenThemeModal={() => setShowThemeModal(true)}
+          onOpenWallpaperModal={() => setShowWallpaperModal(true)}
         />
       )}
 
@@ -446,6 +478,7 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
           onBlockChange={(blocked) => setIsBlocked(blocked)}
           messages={messages}
           onOpenThemeModal={() => setShowThemeModal(true)}
+          onOpenWallpaperModal={() => setShowWallpaperModal(true)}
         />
       )}
 
@@ -456,7 +489,6 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
           onSave={async (newTheme, newEnabled, newIntensity) => {
             try {
               // Update local state and DB
-              setChatTheme(newTheme);
               setThemeSettings({ enabled: newEnabled, intensity: newIntensity });
               localStorage.setItem('zynk_theme_settings', JSON.stringify({ enabled: newEnabled, intensity: newIntensity }));
               
@@ -468,6 +500,25 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
             } catch (error) {
               console.error('Failed to update theme:', error);
               import('../Common/Toast').then(({ showToast }) => showToast('Failed to save theme. Server might be busy.', 'error'));
+            }
+          }}
+        />
+      )}
+
+      {showWallpaperModal && (
+        <ChatWallpaperModal
+          currentWallpaper={chatWallpaper}
+          onClose={() => setShowWallpaperModal(false)}
+          onSave={async (newWallpaper) => {
+            try {
+              await put(`/messages/conversations/${conversation.id}/wallpaper`, { wallpaper: newWallpaper });
+              if (onWallpaperChange) {
+                onWallpaperChange(newWallpaper);
+              }
+              setShowWallpaperModal(false);
+            } catch (error) {
+              console.error('Failed to update wallpaper:', error);
+              import('../Common/Toast').then(({ showToast }) => showToast('Failed to save wallpaper.', 'error'));
             }
           }}
         />

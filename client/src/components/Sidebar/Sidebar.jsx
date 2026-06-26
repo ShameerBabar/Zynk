@@ -148,6 +148,7 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
                 background: 'var(--accent-danger)', border: '2px solid var(--bg-sidebar)'
               }}/>
             )}
+            <span className="icon-label">Friends</span>
           </button>
 
           {/* New Chat — chat bubble */}
@@ -156,6 +157,7 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
               <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
               <path d="M13 11h-2V9h-2v2H7v2h2v2h2v-2h2z"/>
             </svg>
+            <span className="icon-label">Chat</span>
           </button>
 
           {/* Events — calendar icon */}
@@ -163,6 +165,7 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
               <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>
             </svg>
+            <span className="icon-label">Events</span>
           </button>
 
           {/* New Group — multiple people */}
@@ -170,6 +173,7 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
               <path d="M16.5 12c1.38 0 2.49-1.12 2.49-2.5S17.88 7 16.5 7C15.12 7 14 8.12 14 9.5s1.12 2.5 2.5 2.5zm-9 0C8.88 12 10 10.88 10 9.5S8.88 7 7.5 7C6.12 7 5 8.12 5 9.5S6.12 12 7.5 12zM7.5 14c-1.83 0-5.5.92-5.5 2.75V18h11v-1.25C13 14.92 9.33 14 7.5 14zm9 0c-.23 0-.49.01-.76.03.91.66 1.26 1.31 1.26 2.22V18H22v-1.25C22 14.92 18.33 14 16.5 14z"/>
             </svg>
+            <span className="icon-label">Group</span>
           </button>
 
           {/* Notifications Bell */}
@@ -191,6 +195,7 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
                 <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth="2"/>
               </svg>
             )}
+            <span className="icon-label">Alerts</span>
             {notifLoading && (
               <span style={{
                 position: 'absolute', inset: 0, display: 'flex',
@@ -210,8 +215,9 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
           {/* Settings — gear */}
           <button onClick={onOpenSettings} title="Settings">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.38-2.65A.488.488 0 0 0 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.06.74 1.69.99l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.99l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/>
+              <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.38-2.65A.488.488 0 0 0 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49-.12-.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.06.74 1.69.99l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.99l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/>
             </svg>
+            <span className="icon-label">Settings</span>
           </button>
 
         </div>

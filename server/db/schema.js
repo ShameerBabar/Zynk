@@ -88,6 +88,7 @@ function initializeDatabase(db) {
         joined_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
         is_muted        INTEGER DEFAULT 0,
         theme           TEXT,
+        wallpaper       TEXT,
         PRIMARY KEY (conversation_id, user_id),
         FOREIGN KEY (conversation_id) REFERENCES conversations(id),
         FOREIGN KEY (user_id)         REFERENCES users(id)
@@ -102,6 +103,12 @@ function initializeDatabase(db) {
 
     try {
       db.exec('ALTER TABLE conversation_members ADD COLUMN theme TEXT');
+    } catch (e) {
+      // Ignore if column already exists
+    }
+
+    try {
+      db.exec('ALTER TABLE conversation_members ADD COLUMN wallpaper TEXT');
     } catch (e) {
       // Ignore if column already exists
     }
@@ -335,11 +342,19 @@ function initializeDatabase(db) {
         event_time      TEXT,
         location        TEXT,
         notes           TEXT,
+        reminded        INTEGER DEFAULT 0,
         created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
         FOREIGN KEY (creator_id)      REFERENCES users(id) ON DELETE CASCADE
       );
     `);
+    
+    // Migration for existing databases
+    try {
+      db.exec(`ALTER TABLE events ADD COLUMN reminded INTEGER DEFAULT 0;`);
+    } catch (e) {
+      // Ignore if column already exists
+    }
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_events_conversation
         ON events(conversation_id, event_date);

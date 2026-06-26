@@ -123,11 +123,12 @@
 
 .message-bubble.sent .message-status {
   color: rgba(255, 255, 255, 0.75);
+  filter: drop-shadow(0 0 1px rgba(0,0,0,0.5));
 }
 
 .message-bubble.sent .message-status.read {
   color: #ffffff;
-  filter: drop-shadow(0 0 2px rgba(255,255,255,0.4));
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
 }
 
 /* Context Menu Styling */

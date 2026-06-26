@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import './SettingsPanel.css';
 import { useAuth } from '../../context/AuthContext';
 import { put, uploadAvatar } from '../../utils/api';
 import { showToast } from '../Common/Toast';
@@ -182,351 +183,248 @@ export default function SettingsPanel({ onClose }) {
   const platformName = window.zynk?.platform || 'Web/Browser';
 
   return (
-    <div className="sidebar-panel slide-in-left">
-      <div style={{ height: 'var(--header-height)', display: 'flex', alignItems: 'center', padding: '0 16px', background: 'var(--bg-active)', borderBottom: '1px solid var(--border-color)' }}>
+    <div className="settings-panel slide-in-left">
+      <div className="settings-header">
         <button onClick={onClose} style={{ marginRight: '16px', color: 'var(--text-primary)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
           <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>
         </button>
-        <span style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '18px' }}>Settings</span>
+        <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '18px', letterSpacing: '0.5px' }}>Settings</span>
       </div>
       
-      <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto', flex: 1 }}>
+      <div className="settings-content">
         {/* Profile Card */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', paddingBottom: '15px', borderBottom: '1px solid var(--border-color)' }}>
-          <div 
-            style={{ width: '100px', height: '100px', borderRadius: '50%', overflow: 'hidden', background: 'var(--bg-active)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', position: 'relative' }}
-            onClick={() => fileInputRef.current?.click()}
-          >
+        <div className="profile-card">
+          <div className="avatar-container" onClick={() => fileInputRef.current?.click()}>
             {user?.avatar_url ? (
               <img src={getFileUrl(user.avatar_url)} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <span style={{ color: 'var(--text-primary)' }}>{user?.display_name?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase()}</span>
             )}
-            <div style={{ position: 'absolute', bottom: 0, width: '100%', background: 'rgba(0,0,0,0.5)', color: 'white', textAlign: 'center', padding: '3px 0', fontSize: '10px' }}>
-              CHANGE
+            <div className="avatar-overlay">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M4 4h3l2-2h6l2 2h3c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM12 18c3.31 0 6-2.69 6-6s-2.69-6-6-6-6 2.69-6 6 2.69 6 6 6zm0-10c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4z"/></svg>
+              EDIT
             </div>
           </div>
           <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAvatarChange} />
           
-          <div style={{ width: '100%' }}>
-            <label style={{ color: 'var(--accent-primary)', fontSize: '13px', marginBottom: '6px', display: 'block', fontWeight: 500 }}>Your Display Name</label>
+          <div className="setting-input-group">
+            <label className="setting-label">Display Name</label>
             <input 
               type="text" 
+              className="setting-input"
               value={displayName}
               placeholder="e.g. Shameer"
               onChange={e => setDisplayName(e.target.value)}
-              style={{ width: '100%', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '15px', padding: '8px 10px', outline: 'none' }}
             />
           </div>
 
-          <div style={{ width: '100%' }}>
-            <label style={{ color: 'var(--accent-primary)', fontSize: '13px', marginBottom: '6px', display: 'block', fontWeight: 500 }}>About Status</label>
+          <div className="setting-input-group">
+            <label className="setting-label">About Status</label>
             <input 
               type="text" 
+              className="setting-input"
               value={statusText}
               placeholder="e.g. Hey there! I am using Zynk."
               onChange={e => setStatusText(e.target.value)}
-              style={{ width: '100%', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '15px', padding: '8px 10px', outline: 'none' }}
             />
           </div>
 
           <button 
+            className="premium-button"
             onClick={handleSave} 
             disabled={loading}
-            style={{ width: '100%', background: 'var(--accent-primary)', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1, fontWeight: '600', fontSize: '14px' }}
+            style={{ marginTop: '8px' }}
           >
-            {loading ? 'Saving...' : 'Save Profile Details'}
+            {loading ? 'Saving...' : 'Save Profile Changes'}
           </button>
         </div>
 
         {/* PWA Install Button / iOS Instructions */}
         {(deferredPrompt || showIOSInstructions) && (
-          <div style={{ paddingBottom: '15px', borderBottom: '1px solid var(--border-color)' }}>
-            <h4 style={{ color: 'var(--text-primary)', fontSize: '15px', marginBottom: '12px', fontWeight: 600 }}>Install App</h4>
-            
-            {showIOSInstructions ? (
-              <div style={{ background: 'var(--bg-app)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <div style={{ color: 'var(--text-primary)', fontSize: '13px', marginBottom: '8px', fontWeight: 500 }}>How to install on iPhone:</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <span>1.</span>
-                    <span>Tap the <b>Share</b> button in Safari's bottom menu bar.</span>
+          <div className="settings-section">
+            <div className="settings-section-title">Install App</div>
+            <div className="settings-card" style={{ padding: '20px' }}>
+              {showIOSInstructions ? (
+                <>
+                  <div style={{ color: 'var(--text-primary)', fontSize: '14px', marginBottom: '12px', fontWeight: 600 }}>How to install on iPhone:</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>1.</span>
+                      <span>Tap the <b>Share</b> button in Safari's bottom menu bar.</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>2.</span>
+                      <span>Scroll down and tap <b>Add to Home Screen</b>.</span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <span>2.</span>
-                    <span>Scroll down and tap <b>Add to Home Screen</b>.</span>
-                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.5 }}>Install Zynk on your device home screen for a fast, native app experience.</div>
+                  <button className="premium-button" onClick={handleInstallApp}>
+                    Install Zynk App
+                  </button>
                 </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '4px', lineHeight: 1.4 }}>Install Zynk on your device home screen for a fast, native app experience.</div>
-                <button 
-                  onClick={handleInstallApp} 
-                  style={{ width: '100%', background: 'var(--accent-primary)', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: 'background var(--transition-fast)' }}
-                  onMouseOver={e => e.currentTarget.style.background = 'var(--accent-primary-hover)'}
-                  onMouseOut={e => e.currentTarget.style.background = 'var(--accent-primary)'}
-                >
-                  Install Zynk App
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
         {/* Appearance Settings */}
-        <div style={{ paddingBottom: '15px', borderBottom: '1px solid var(--border-color)' }}>
-          <h4 style={{ color: 'var(--text-primary)', fontSize: '15px', marginBottom: '15px', fontWeight: 600 }}>Appearance</h4>
-          
-          {/* Theme Toggle */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <div>
-              <div style={{ color: 'var(--text-primary)', fontSize: '14px' }}>Theme Mode</div>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Choose between dark or light mode</div>
-            </div>
-            <button 
-              onClick={toggleTheme}
-              style={{ 
-                background: 'var(--bg-active)', border: '1px solid var(--border-color)', 
-                borderRadius: '8px', padding: '8px 12px', color: 'var(--text-primary)', 
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-                fontSize: '13px'
-              }}
-            >
-              {theme === 'dark' ? (
-                <>
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm-1.06-10.9a.996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06a.996.996 0 0 0-1.41 0zm-10.9 10.9a.996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06a.996.996 0 0 0-1.41 0z"/></svg>
-                  Light Mode
-                </>
-              ) : (
-                <>
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10C2.2 6.8 6.5 2.5 11.7 2.1c.5 0 .8.4.7.9-.1.4-.4.8-.9.9-3.8.7-6.5 4.1-6.5 8.1 0 4.6 3.8 8.4 8.4 8.4 4 0 7.4-2.7 8.1-6.5.1-.5.5-.8.9-.9.5-.1.9.2.9.7-.4 5.2-4.7 9.3-9.9 9.3z"/></svg>
-                  Dark Mode
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Wallpaper Swatches */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ color: 'var(--text-primary)', fontSize: '14px' }}>Chat Wallpaper</div>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-              {swatches.map(sw => (
-                <button
-                  key={sw.id}
-                  onClick={() => setWallpaper(sw.id)}
-                  title={sw.label}
-                  style={{
-                    width: '32px', height: '32px', borderRadius: '50%',
-                    background: sw.color, cursor: 'pointer',
-                    border: wallpaper === sw.id ? '2px solid var(--accent-primary)' : '2px solid transparent',
-                    boxShadow: '0 0 3px rgba(0,0,0,0.5)',
-                    padding: 0
-                  }}
-                />
-              ))}
-              <div 
-                title="Custom Image"
-                onClick={() => { document.getElementById('wallpaper-upload').click(); }}
-                style={{
-                    width: '32px', height: '32px', borderRadius: '50%',
-                    background: 'var(--bg-active)', cursor: 'pointer',
-                    border: wallpaper === 'custom' ? '2px solid var(--accent-primary)' : '2px dashed var(--text-secondary)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
-              >
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="var(--text-secondary)"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-1.96-2.36L6.5 17h11l-3.54-4.71z"/></svg>
+        <div className="settings-section">
+          <div className="settings-section-title">Appearance</div>
+          <div className="settings-card">
+            <div className="settings-row interactive" onClick={toggleTheme}>
+              <div className="settings-row-text">
+                <div className="title">Theme Mode</div>
+                <div className="subtitle">Switch between dark & light</div>
               </div>
-              <input type="file" id="wallpaper-upload" style={{ display: 'none' }} accept="image/*" onChange={async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                try {
-                  const res = await uploadAvatar(file); // upload file
-                  const updateRes = await put('/users/profile', { chat_background_url: res.url });
-                  updateProfile(updateRes.user);
-                  setWallpaper('custom');
-                  showToast('Wallpaper updated', 'success');
-                } catch (err) {
-                  showToast(err.message, 'error');
-                }
-              }} />
+              <div style={{ color: 'var(--text-secondary)' }}>
+                {theme === 'dark' ? (
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm-1.06-10.9a.996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06a.996.996 0 0 0-1.41 0zm-10.9 10.9a.996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06a.996.996 0 0 0-1.41 0z"/></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12.3 22h-.1c-5.5 0-10-4.5-10-10C2.2 6.8 6.5 2.5 11.7 2.1c.5 0 .8.4.7.9-.1.4-.4.8-.9.9-3.8.7-6.5 4.1-6.5 8.1 0 4.6 3.8 8.4 8.4 8.4 4 0 7.4-2.7 8.1-6.5.1-.5.5-.8.9-.9.5-.1.9.2.9.7-.4 5.2-4.7 9.3-9.9 9.3z"/></svg>
+                )}
+              </div>
+            </div>
+            <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
+              <div className="settings-row-text">
+                <div className="title">Chat Wallpaper</div>
+                <div className="subtitle">Personalize your chat background</div>
+              </div>
+              <div className="wallpaper-swatches">
+                {swatches.map(sw => (
+                  <div
+                    key={sw.id}
+                    className={`wallpaper-swatch ${wallpaper === sw.id ? 'active' : ''}`}
+                    onClick={() => setWallpaper(sw.id)}
+                    title={sw.label}
+                    style={{ background: sw.color }}
+                  />
+                ))}
+                <div 
+                  title="Custom Image"
+                  className={`wallpaper-swatch custom ${wallpaper === 'custom' ? 'active' : ''}`}
+                  onClick={() => document.getElementById('wallpaper-upload').click()}
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="var(--text-secondary)"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-1.96-2.36L6.5 17h11l-3.54-4.71z"/></svg>
+                </div>
+                <input type="file" id="wallpaper-upload" style={{ display: 'none' }} accept="image/*" onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  try {
+                    const res = await uploadAvatar(file);
+                    const updateRes = await put('/users/profile', { chat_background_url: res.url });
+                    updateProfile(updateRes.user);
+                    setWallpaper('custom');
+                    showToast('Wallpaper updated', 'success');
+                  } catch (err) {
+                    showToast(err.message, 'error');
+                  }
+                }} />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Notifications Settings */}
-        <div style={{ paddingBottom: '15px', borderBottom: '1px solid var(--border-color)' }}>
-          <h4 style={{ color: 'var(--text-primary)', fontSize: '15px', marginBottom: '15px', fontWeight: 600 }}>Notifications</h4>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ color: 'var(--text-primary)', fontSize: '14px' }}>Message Sounds</div>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>Play sounds for incoming messages</div>
-            </div>
-            <input 
-              type="checkbox" 
-              checked={soundEnabled} 
-              onChange={e => setSoundEnabled(e.target.checked)}
-              style={{
-                width: '40px', height: '20px',
-                accentColor: 'var(--accent-primary)',
-                cursor: 'pointer'
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Diagnostic App Info */}
-        <div style={{ paddingBottom: '10px' }}>
-          <h4 style={{ color: 'var(--text-primary)', fontSize: '15px', marginBottom: '12px', fontWeight: 600 }}>App Information</h4>
-          <div style={{ 
-            background: 'var(--bg-app)', border: '1px solid var(--border-color)', 
-            borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', 
-            gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' 
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Version:</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{appVersion}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>OS Platform:</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: '500', textTransform: 'capitalize' }}>{platformName}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>Server Status:</span>
-              <span style={{ 
-                color: isSocketConnected ? 'var(--online-color)' : 'var(--accent-danger)', 
-                fontWeight: '600', display: 'flex', alignItems: 'center', gap: '5px' 
-              }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isSocketConnected ? 'var(--online-color)' : 'var(--accent-danger)', display: 'inline-block' }}></span>
-                {isSocketConnected ? 'Connected' : 'Offline'}
-              </span>
+        <div className="settings-section">
+          <div className="settings-section-title">Notifications</div>
+          <div className="settings-card">
+            <div className="settings-row">
+              <div className="settings-row-text">
+                <div className="title">Message Sounds</div>
+                <div className="subtitle">Play a sound for incoming messages</div>
+              </div>
+              <label className="premium-toggle">
+                <input type="checkbox" checked={soundEnabled} onChange={e => setSoundEnabled(e.target.checked)} />
+                <span className="toggle-slider"></span>
+              </label>
             </div>
           </div>
         </div>
 
-        {/* Push Notification Diagnostics */}
-        <div style={{ paddingBottom: '10px' }}>
-          <h4 style={{ color: 'var(--text-primary)', fontSize: '15px', marginBottom: '12px', fontWeight: 600 }}>Push Notification Diagnostics</h4>
-          <div style={{ 
-            background: 'var(--bg-app)', border: '1px solid var(--border-color)', 
-            borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', 
-            gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' 
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Permission State:</span>
-              <span style={{ 
-                color: notificationPermission === 'granted' ? 'var(--online-color)' : notificationPermission === 'denied' ? 'var(--accent-danger)' : 'var(--text-primary)',
-                fontWeight: '600'
-              }}>
-                {notificationPermission.toUpperCase()}
-              </span>
+        {/* Diagnostics & Advanced */}
+        <div className="settings-section">
+          <div className="settings-section-title">Diagnostics & Advanced</div>
+          <div className="settings-card">
+            <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}>
+              <div className="diagnostic-row">
+                <span>App Version</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{appVersion}</span>
+              </div>
+              <div className="diagnostic-row">
+                <span>Platform</span>
+                <span style={{ color: 'var(--text-primary)', fontWeight: '600', textTransform: 'capitalize' }}>{platformName}</span>
+              </div>
+              <div className="diagnostic-row">
+                <span>Server Status</span>
+                <span style={{ color: isSocketConnected ? 'var(--online-color)' : 'var(--accent-danger)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'currentColor' }}></span>
+                  {isSocketConnected ? 'Connected' : 'Offline'}
+                </span>
+              </div>
+              <div className="diagnostic-row">
+                <span>Push Engine</span>
+                <span style={{ color: fcmSupported ? 'var(--online-color)' : 'var(--accent-danger)', fontWeight: '600' }}>
+                  {fcmSupported ? 'FCM Ready' : 'Unsupported'}
+                </span>
+              </div>
+              <div className="diagnostic-row">
+                <span>Push Permission</span>
+                <span style={{ color: notificationPermission === 'granted' ? 'var(--online-color)' : notificationPermission === 'denied' ? 'var(--accent-danger)' : 'var(--text-primary)', fontWeight: '600' }}>
+                  {String(notificationPermission || 'unsupported').toUpperCase()}
+                </span>
+              </div>
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>FCM Push Engine:</span>
-              <span style={{ 
-                color: fcmSupported ? 'var(--online-color)' : 'var(--accent-danger)',
-                fontWeight: '600'
-              }}>
-                {fcmSupported ? 'Supported (FCM)' : 'Unsupported'}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Service Worker:</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>
-                {swState}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>Push Token State:</span>
-              <span style={{ 
-                color: fcmToken !== 'None' ? 'var(--online-color)' : 'var(--accent-danger)',
-                fontWeight: '600'
-              }}>
-                {fcmToken !== 'None' ? 'Active' : 'Missing'}
-              </span>
-            </div>
-
             {fcmToken !== 'None' && (
-              <div style={{ marginTop: '4px', borderTop: '1px dashed var(--border-color)', paddingTop: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <span>FCM Token:</span>
-                  <button 
-                    onClick={handleCopyToken}
-                    style={{
-                      background: 'var(--bg-active)', border: 'none', color: 'var(--accent-primary)',
-                      padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px',
-                      fontWeight: '600'
-                    }}
-                  >
+              <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-primary)', fontSize: '13.5px', fontWeight: '600' }}>FCM Token</span>
+                  <button onClick={handleCopyToken} style={{ background: 'var(--bg-active)', border: 'none', color: 'var(--accent-primary)', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '600' }}>
                     {isCopied ? 'Copied!' : 'Copy'}
                   </button>
                 </div>
-                <div style={{
-                  fontFamily: 'monospace', fontSize: '11px', wordBreak: 'break-all',
-                  background: 'rgba(0,0,0,0.2)', padding: '6px', borderRadius: '4px',
-                  maxHeight: '60px', overflowY: 'auto', color: 'var(--text-primary)'
-                }}>
+                <div style={{ fontFamily: 'monospace', fontSize: '11.5px', wordBreak: 'break-all', background: 'rgba(0,0,0,0.1)', padding: '8px 10px', borderRadius: '6px', maxHeight: '60px', overflowY: 'auto', color: 'var(--text-secondary)', width: '100%' }}>
                   {fcmToken}
                 </div>
               </div>
             )}
-
-            <button
-              onClick={handleReRegisterToken}
-              disabled={reloadingToken}
-              style={{
-                marginTop: '8px', width: '100%', background: 'var(--bg-active)',
-                border: '1px solid var(--border-color)', color: 'var(--text-primary)',
-                padding: '8px', borderRadius: '6px', cursor: reloadingToken ? 'default' : 'pointer',
-                fontWeight: '600', fontSize: '12px', transition: 'background var(--transition-fast)'
-              }}
-              onMouseOver={e => !reloadingToken && (e.currentTarget.style.background = 'var(--border-light)')}
-              onMouseOut={e => !reloadingToken && (e.currentTarget.style.background = 'var(--bg-active)')}
-            >
-              {reloadingToken ? 'Re-registering...' : 'Force Re-Register Push'}
-            </button>
-          </div>
-          </div>
-
-          <div className="settings-section">
-            <h3 className="section-title" style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '12px', letterSpacing: '0.5px' }}>App Updates</h3>
-            <div className="settings-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                If you are using the homescreen app and it hasn't updated to the latest version, you can force a reload here.
-              </span>
-              <button 
-                onClick={handleForceUpdate}
-                style={{
-                  width: '100%', background: 'var(--bg-active)',
-                  border: '1px solid var(--border-color)', color: 'var(--text-primary)',
-                  padding: '8px', borderRadius: '6px', cursor: 'pointer',
-                  fontWeight: '600', fontSize: '12px', transition: 'background var(--transition-fast)'
-                }}
-                onMouseOver={e => (e.currentTarget.style.background = 'var(--border-light)')}
-                onMouseOut={e => (e.currentTarget.style.background = 'var(--bg-active)')}
-              >
-                Force Reload App
+            
+            <div className="settings-row" style={{ flexDirection: 'column', gap: '10px' }}>
+              <button className="premium-button premium-button-secondary" onClick={handleReRegisterToken} disabled={reloadingToken}>
+                {reloadingToken ? 'Re-registering...' : 'Force Re-Register Push'}
+              </button>
+              <button className="premium-button premium-button-secondary" onClick={handleForceUpdate}>
+                Force Reload App Cache
               </button>
             </div>
           </div>
+        </div>
 
-        {/* Logout Button */}
-        <button 
-          onClick={logout}
-          style={{ 
-            width: '100%', background: 'transparent', color: 'var(--accent-danger)', 
-            border: '1px solid var(--accent-danger)', padding: '10px', borderRadius: '6px', 
-            cursor: 'pointer', fontWeight: '600', fontSize: '14px', marginTop: 'auto',
-            transition: 'background var(--transition-fast)'
-          }}
-          onMouseOver={e => e.currentTarget.style.background = 'rgba(234, 67, 53, 0.1)'}
-          onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-        >
-          Log Out
-        </button>
+        {/* Logout */}
+        <div style={{ marginTop: '10px', marginBottom: '40px' }}>
+          <button 
+            onClick={logout}
+            style={{ 
+              width: '100%', background: 'transparent', color: 'var(--accent-danger)', 
+              border: '1px solid var(--accent-danger)', padding: '14px', borderRadius: '12px', 
+              cursor: 'pointer', fontWeight: '600', fontSize: '15px',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={e => {
+              e.currentTarget.style.background = 'var(--accent-danger)';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--accent-danger)';
+            }}
+          >
+            Log Out
+          </button>
+        </div>
       </div>
     </div>
   );

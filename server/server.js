@@ -354,6 +354,10 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Something broke!', details: err.message });
 });
 
+// Start event reminders
+const { startEventReminders } = require('./utils/eventReminders');
+startEventReminders(db, io, pushQueue);
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Zynk backend server running on port ${PORT}`);
