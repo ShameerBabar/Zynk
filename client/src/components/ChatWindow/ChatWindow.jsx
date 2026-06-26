@@ -460,7 +460,7 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
               setThemeSettings({ enabled: newEnabled, intensity: newIntensity });
               localStorage.setItem('zynk_theme_settings', JSON.stringify({ enabled: newEnabled, intensity: newIntensity }));
               
-              await put(`/conversations/${conversation.id}/theme`, { theme: newTheme === 'default' ? null : newTheme });
+              await put(`/messages/conversations/${conversation.id}/theme`, { theme: newTheme === 'default' ? null : newTheme });
               setShowThemeModal(false);
             } catch (error) {
               console.error('Failed to update theme:', error);
