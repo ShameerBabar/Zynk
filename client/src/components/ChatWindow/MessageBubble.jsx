@@ -234,7 +234,7 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe,
       </div>
 
       {/* Event detection suggestion bar — only for text messages without a confirmed event */}
-      {detectionResult && !event && (
+      {detectionResult && !event && isMine && (
         <EventDetectionBar
           message={message}
           conversationId={message.conversation_id}

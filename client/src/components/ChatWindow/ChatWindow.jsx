@@ -72,14 +72,14 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     };
   }, [conversation.id, setActiveConversationId]);
 
-  // Keep groupMembers and theme in sync when conversation prop changes
+  // Keep groupMembers and theme in sync when switching conversations
   useEffect(() => {
     setGroupMembers(conversation.members || []);
     setChatTheme(conversation.theme || 'default');
     // Reset search when switching conversations
     setShowSearch(false);
     setInChatTargetId(null);
-  }, [conversation.id, conversation.theme, conversation.members]);
+  }, [conversation.id]);
 
   // Fetch events for this conversation on mount / conversation change
   useEffect(() => {
@@ -467,6 +467,7 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
               setShowThemeModal(false);
             } catch (error) {
               console.error('Failed to update theme:', error);
+              import('../Common/Toast').then(({ showToast }) => showToast('Failed to save theme. Server might be busy.', 'error'));
             }
           }}
         />

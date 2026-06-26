@@ -38,9 +38,13 @@ export default function SettingsPanel({ onClose }) {
   };
 
   // Push notification diagnostics states
-  const [notificationPermission, setNotificationPermission] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
-  );
+  const [notificationPermission, setNotificationPermission] = useState(() => {
+    try {
+      return typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+    } catch {
+      return 'unsupported';
+    }
+  });
   const [fcmSupported, setFcmSupported] = useState(false);
   const [fcmToken, setFcmToken] = useState(localStorage.getItem('zynk_fcm_token') || 'None');
   const [swState, setSwState] = useState('Checking...');
@@ -128,7 +132,9 @@ export default function SettingsPanel({ onClose }) {
     setDeferredPrompt(null);
   };
 
-  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isIOS = typeof navigator !== 'undefined' && 
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) &&
+    !window.MSStream;
   const isStandalone = typeof window !== 'undefined' && (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches);
   const showIOSInstructions = isIOS && !isStandalone;
 
