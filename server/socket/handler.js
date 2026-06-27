@@ -309,23 +309,21 @@ function setupSocketHandlers(io, db, sendPushToUser) {
       // ── Web Push for call if recipient is offline ─────────────────────
       if (sendPushToUser) {
         const targetUser = db.prepare(`SELECT is_online FROM users WHERE id = ?`).get(targetUserId);
-        if (targetUser && targetUser.is_online === 0) {
-          sendPushToUser(db, targetUserId, {
-            title: `📞 Incoming ${type === 'video' ? 'Video' : 'Voice'} Call`,
-            body: `${callerName} is calling you on Zynk`,
-            icon: '/manifest-icon-192.png',
-            badge: '/manifest-icon-192.png',
-            tag: `call-${userId}`,
-            requireInteraction: true,   // keeps notification visible until user acts
-            data: {
-              type: 'call',
-              callType: type,
-              callerId: userId,
-              callerName,
-              url: '/'
-            }
-          });
-        }
+        sendPushToUser(db, targetUserId, {
+          title: `📞 Incoming ${type === 'video' ? 'Video' : 'Voice'} Call`,
+          body: `${callerName} is calling you on Zynk`,
+          icon: '/manifest-icon-192.png',
+          badge: '/manifest-icon-192.png',
+          tag: `call-${userId}`,
+          requireInteraction: true,   // keeps notification visible until user acts
+          data: {
+            type: 'call',
+            callType: type,
+            callerId: userId,
+            callerName,
+            url: '/'
+          }
+        });
       }
     });
 
@@ -421,25 +419,22 @@ function setupSocketHandlers(io, db, sendPushToUser) {
 
             // ── Web Push for offline group members ─────────────────────────────
             if (sendPushToUser && is_muted !== 1) {
-              const memberStatus = db.prepare(`SELECT is_online FROM users WHERE id = ?`).get(user_id);
-              if (memberStatus && memberStatus.is_online === 0) {
-                sendPushToUser(db, user_id, {
-                  title: `📞 Group ${callType === 'video' ? 'Video' : 'Voice'} Call`,
-                  body: `${startedByName} started a call in ${groupName}`,
-                  icon: '/manifest-icon-192.png',
-                  badge: '/manifest-icon-192.png',
-                  tag: `group-call-${groupId}`,
-                  requireInteraction: true,
-                  data: {
-                    type: 'group_call',
-                    callType,
-                    groupId,
-                    groupName,
-                    startedByName,
-                    url: '/'
-                  }
-                });
-              }
+              sendPushToUser(db, user_id, {
+                title: `📞 Group ${callType === 'video' ? 'Video' : 'Voice'} Call`,
+                body: `${startedByName} started a call in ${groupName}`,
+                icon: '/manifest-icon-192.png',
+                badge: '/manifest-icon-192.png',
+                tag: `group-call-${groupId}`,
+                requireInteraction: true,
+                data: {
+                  type: 'group_call',
+                  callType,
+                  groupId,
+                  groupName,
+                  startedByName,
+                  url: '/'
+                }
+              });
             }
           }
         });
