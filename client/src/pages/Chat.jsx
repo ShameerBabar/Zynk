@@ -75,25 +75,17 @@ export default function Chat() {
     const handleNotificationClick = (e) => {
       const data = e.detail;
       if (data && data.conversationId) {
-        const found = conversations.find(c => c.id === data.conversationId);
-        if (found) {
-          setSelectedConversation(found);
-          setShowFriendsPanel(false);
-          setShowNewChatPanel(false);
-          setShowSettings(false);
-          setShowProfile(false);
-        } else {
-          fetchConversations().then(updatedList => {
-            const freshFound = updatedList.find(c => c.id === data.conversationId);
-            if (freshFound) {
-              setSelectedConversation(freshFound);
-              setShowFriendsPanel(false);
-              setShowNewChatPanel(false);
-              setShowSettings(false);
-              setShowProfile(false);
-            }
-          });
-        }
+        // Always fetch fresh conversations to guarantee accurate unread count before mounting ChatWindow
+        fetchConversations().then(updatedList => {
+          const freshFound = updatedList.find(c => c.id === data.conversationId);
+          if (freshFound) {
+            setSelectedConversation(freshFound);
+            setShowFriendsPanel(false);
+            setShowNewChatPanel(false);
+            setShowSettings(false);
+            setShowProfile(false);
+          }
+        });
       }
     };
 
