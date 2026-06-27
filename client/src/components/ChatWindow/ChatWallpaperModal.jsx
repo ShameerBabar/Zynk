@@ -61,23 +61,33 @@ export default function ChatWallpaperModal({ currentWallpaper = null, onClose, o
     <AnimatePresence>
       <motion.div 
         className="modal-overlay"
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        style={{ zIndex: 1000 }}
       >
         <motion.div 
-          className="modal-content"
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
+          className="modal-content glass"
+          style={{
+            width: '90%', maxWidth: '450px', maxHeight: '90vh',
+            background: 'var(--bg-modal)', borderRadius: 'var(--radius-lg)',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+            border: '1px solid var(--border-light)'
+          }}
+          initial={{ scale: 0.95, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 20 }}
           onClick={e => e.stopPropagation()}
-          style={{ width: '90%', maxWidth: '400px', background: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: '16px', overflow: 'hidden' }}
         >
-          <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-sidebar)' }}>
-            <h2 style={{ margin: 0, fontSize: '18px', color: 'var(--text-primary)' }}>Chat Wallpaper</h2>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)' }}>Chat Wallpaper</h2>
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
               <X size={20} />
             </button>
           </div>

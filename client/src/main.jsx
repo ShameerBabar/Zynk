@@ -11,9 +11,23 @@ window.addEventListener('beforeinstallprompt', (e) => {
   window.dispatchEvent(new Event('pwa-installable'));
 });
 
-// ── Service Worker Registration with Auto-Update ──────────────────────────────
+// 🚨 Service Worker Registration with Auto-Update 🚨
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    // Check if we are running in Capacitor Native environment
+    const isCapacitorNative = !!window.Capacitor?.isNativePlatform?.();
+
+    if (isCapacitorNative) {
+      // In native apps, the files are already on disk. A Service Worker causes infinite reload loops.
+      // Unregister any existing service workers.
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+      return;
+    }
+
     navigator.serviceWorker.register('/sw.js').then(registration => {
       console.log('[SW] Registered:', registration.scope);
 

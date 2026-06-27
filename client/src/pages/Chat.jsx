@@ -4,6 +4,7 @@ import { get, post } from '../utils/api';
 import Sidebar from '../components/Sidebar/Sidebar';
 import ChatWindow from '../components/ChatWindow/ChatWindow';
 import SettingsPanel from '../components/Settings/SettingsPanel';
+import ProfilePanel from '../components/Settings/ProfilePanel';
 import GroupCreate from '../components/Group/GroupCreate';
 import NewChatPanel from '../components/Sidebar/NewChatPanel';
 import FriendsPanel from '../components/Sidebar/FriendsPanel';
@@ -28,6 +29,7 @@ export default function Chat() {
     }
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [showGroupCreate, setShowGroupCreate] = useState(false);
   const [showNewChatPanel, setShowNewChatPanel] = useState(false);
   const [showFriendsPanel, setShowFriendsPanel] = useState(false);
@@ -79,6 +81,7 @@ export default function Chat() {
           setShowFriendsPanel(false);
           setShowNewChatPanel(false);
           setShowSettings(false);
+          setShowProfile(false);
         } else {
           fetchConversations().then(updatedList => {
             const freshFound = updatedList.find(c => c.id === data.conversationId);
@@ -87,6 +90,7 @@ export default function Chat() {
               setShowFriendsPanel(false);
               setShowNewChatPanel(false);
               setShowSettings(false);
+              setShowProfile(false);
             }
           });
         }
@@ -363,6 +367,15 @@ export default function Chat() {
     });
   };
 
+  const handleConversationUpdated = (convId, updates) => {
+    setConversations(prev => prev.map(c => 
+      c.id === convId ? { ...c, ...updates } : c
+    ));
+    if (selectedConversation?.id === convId) {
+      setSelectedConversation(prev => ({ ...prev, ...updates }));
+    }
+  };
+
   return (
     <div className={`chat-layout ${selectedConversation ? 'has-selected-chat' : ''}`}>
       <div className="sidebar-wrapper">
@@ -370,12 +383,14 @@ export default function Chat() {
           conversations={conversations} 
           selectedId={selectedConversation?.id} 
           onSelect={handleSelectConversation}
+          onOpenProfile={() => setShowProfile(true)}
           onOpenSettings={() => setShowSettings(true)}
           onNewGroup={() => setShowGroupCreate(true)}
           onOpenNewChatPanel={() => setShowNewChatPanel(true)}
           onOpenFriendsPanel={() => setShowFriendsPanel(true)}
           onOpenEventsPanel={() => setShowEventsPanel(true)}
           onNewChat={startPrivateChat}
+          onConversationUpdated={handleConversationUpdated}
         />
 
         {/* Overlay panels — rendered inside sidebar wrapper so they slide over the sidebar */}
@@ -408,6 +423,9 @@ export default function Chat() {
         {showSettings && (
           <SettingsPanel onClose={() => setShowSettings(false)} />
         )}
+        {showProfile && (
+          <ProfilePanel onClose={() => setShowProfile(false)} />
+        )}
       </div>
       
       <div className="chat-window-container">
@@ -430,11 +448,13 @@ export default function Chat() {
               setConversations(prev => prev.map(c => 
                 c.id === selectedConversation.id ? { ...c, theme: newTheme } : c
               ));
+              setSelectedConversation(prev => ({ ...prev, theme: newTheme }));
             }}
             onWallpaperChange={(newWallpaper) => {
               setConversations(prev => prev.map(c => 
                 c.id === selectedConversation.id ? { ...c, wallpaper: newWallpaper } : c
               ));
+              setSelectedConversation(prev => ({ ...prev, wallpaper: newWallpaper }));
             }}
             onForward={setForwardMessage}
           />

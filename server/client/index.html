@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <script>
+      // Self-healing mechanism for PWA cache issues
+      window.addEventListener('error', function(e) {
+        var errorMsg = e.message || '';
+        var isScriptError = e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK');
+        var isUnexpectedToken = errorMsg.indexOf('Unexpected token') !== -1 || errorMsg.indexOf('SyntaxError') !== -1;
+        
+        if (isScriptError || isUnexpectedToken) {
+          console.warn('Asset loading failure detected. Attempting PWA cache reset...', e);
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              var unregisterPromises = registrations.map(function(reg) {
+                return reg.unregister();
+              });
+              Promise.all(unregisterPromises).then(function() {
+                if (window.caches) {
+                  caches.keys().then(function(keys) {
+                    return Promise.all(keys.map(function(key) {
+                      return caches.delete(key);
+                    }));
+                  }).then(function() {
+                    window.location.reload(true);
+                  });
+                } else {
+                  window.location.reload(true);
+                }
+              });
+            });
+          } else {
+            window.location.reload(true);
+          }
+        }
+      }, true);
+    </script>
+    <meta name="theme-color" content="#0b141a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Zynk</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

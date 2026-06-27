@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "453406012303",
+    "firebase_url": "https://zynk-chat-shameer-2026-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "zynk-chat-shameer-2026",
+    "storage_bucket": "zynk-chat-shameer-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:453406012303:android:ea58d4065f291e7bfa91fa",
+        "android_client_info": {
+          "package_name": "com.zynk.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "453406012303-24ik5eoo8v774t003g875l8d6qc8h63j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmGce3alL4m0SgWpagLLYtSq2DfoMj9Y4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "453406012303-24ik5eoo8v774t003g875l8d6qc8h63j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

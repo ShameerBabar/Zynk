@@ -8,7 +8,19 @@ import { get } from '../../utils/api';
 import { subscribeToPush, unsubscribeFromPush } from '../../utils/pushNotifications';
 import './Sidebar.css';
 
-export default function Sidebar({ conversations, selectedId, onSelect, onOpenSettings, onNewGroup, onNewChat, onOpenNewChatPanel, onOpenFriendsPanel, onOpenEventsPanel }) {
+export default function Sidebar({ 
+  conversations, 
+  selectedId, 
+  onSelect, 
+  onOpenSettings,
+  onOpenProfile,
+  onNewGroup,
+  onOpenNewChatPanel,
+  onOpenFriendsPanel,
+  onOpenEventsPanel,
+  onNewChat,
+  onConversationUpdated
+}) {
   const { user, token } = useAuth();
   const { socket } = useSocketContext();
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
@@ -125,11 +137,11 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <div className="user-avatar-mini" onClick={onOpenSettings} style={{cursor: 'pointer'}}>
+        <div className="user-avatar-mini" onClick={onOpenProfile} style={{cursor: 'pointer'}}>
           {user?.avatar_url ? (
             <img src={getFileUrl(user.avatar_url)} alt="Profile" />
           ) : (
-            <div className="avatar-placeholder">{user?.display_name?.[0]?.toUpperCase()}</div>
+            <div className="avatar-placeholder">{user?.display_name?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase()}</div>
           )}
         </div>
         
@@ -160,13 +172,14 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
             <span className="icon-label">Chat</span>
           </button>
 
-          {/* Events — calendar icon */}
-          <button onClick={onOpenEventsPanel} title="Upcoming Events">
+          {/* Events - calendar icon */}
+          <button onClick={onOpenEventsPanel} title="Events & Polls">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/>
+              <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/>
             </svg>
             <span className="icon-label">Events</span>
           </button>
+
 
           {/* New Group — multiple people */}
           <button onClick={onNewGroup} title="New Group">
@@ -212,14 +225,13 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
             )}
           </button>
 
-          {/* Settings — gear */}
+          {/* Settings - cog icon */}
           <button onClick={onOpenSettings} title="Settings">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.38-2.65A.488.488 0 0 0 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49-.12-.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.06.74 1.69.99l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.99l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/>
+              <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
             </svg>
             <span className="icon-label">Settings</span>
           </button>
-
         </div>
       </div>
       
@@ -231,7 +243,7 @@ export default function Sidebar({ conversations, selectedId, onSelect, onOpenSet
       </div>
       
       <div className="sidebar-list">
-        <ChatList conversations={conversations} selectedId={selectedId} onSelect={onSelect} />
+        <ChatList conversations={conversations} selectedId={selectedId} onSelect={onSelect} onConversationUpdated={onConversationUpdated} />
       </div>
 
       {isSearchOpen && (

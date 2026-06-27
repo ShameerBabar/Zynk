@@ -23,6 +23,7 @@
   overflow: hidden;
   cursor: pointer;
   background: var(--bg-active);
+  flex-shrink: 0;
 }
 
 .user-avatar-mini img {
@@ -112,4 +113,39 @@
 .sidebar-list {
   flex: 1;
   overflow-y: auto;
+}
+
+/* Pinned Chat Styles */
+:root {
+  --pinned-gold: #FFB800;
+  --pinned-emerald: #10B981;
+  --pinned-sapphire: #3B82F6;
+  --pinned-ruby: #EF4444;
+  --pinned-amethyst: #8B5CF6;
+}
+
+.context-menu-item {
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.hover-scale {
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.2);
+  border-color: var(--text-primary) !important;
 }

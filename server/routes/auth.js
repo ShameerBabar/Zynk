@@ -46,7 +46,7 @@ function sanitizeUser(user) {
 
 /**
  * POST /register
- * Body: { username, phone, password, display_name? }
+ * Body: { username, phone?, password, display_name? }
  */
 router.post('/register', (req, res) => {
   try {
@@ -54,8 +54,8 @@ router.post('/register', (req, res) => {
     const { username, phone, password, display_name } = req.body;
 
     // ── Validation ─────────────────────────────────────────────────────
-    if (!username || !phone || !password) {
-      return res.status(400).json({ error: 'Username, phone, and password are required.' });
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required.' });
     }
 
     // Username: 3-20 alphanumeric + underscores
@@ -66,10 +66,16 @@ router.post('/register', (req, res) => {
       return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores.' });
     }
 
-    // Phone: basic international format validation (digits, optional leading +)
-    const phoneClean = phone.replace(/[\s\-()]/g, '');
-    if (!/^\+?\d{7,15}$/.test(phoneClean)) {
-      return res.status(400).json({ error: 'Invalid phone number format.' });
+    let phoneClean = null;
+    if (phone) {
+      // Phone: basic international format validation (digits, optional leading +)
+      phoneClean = phone.replace(/[\s\-()]/g, '');
+      if (!/^\+?\d{7,15}$/.test(phoneClean)) {
+        return res.status(400).json({ error: 'Invalid phone number format.' });
+      }
+    } else {
+      // Generate a placeholder phone since phone was abolished from UI
+      phoneClean = `user-${uuidv4().substring(0, 8)}`;
     }
 
     // Password: minimum 6 characters
@@ -83,9 +89,11 @@ router.post('/register', (req, res) => {
       return res.status(409).json({ error: 'Username already taken.' });
     }
 
-    const existingPhone = db.prepare('SELECT id FROM users WHERE phone = ?').get(phoneClean);
-    if (existingPhone) {
-      return res.status(409).json({ error: 'Phone number already registered.' });
+    if (phone) {
+      const existingPhone = db.prepare('SELECT id FROM users WHERE phone = ?').get(phoneClean);
+      if (existingPhone) {
+        return res.status(409).json({ error: 'Phone number already registered.' });
+      }
     }
 
     // ── Create user ────────────────────────────────────────────────────

@@ -1,0 +1,79 @@
+.message-input-container {
+  min-height: var(--input-height);
+  padding: 10px 16px;
+  background: var(--bg-sidebar);
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  z-index: 10;
+}
+
+.input-actions {
+  display: flex;
+  gap: 8px;
+  padding-bottom: 6px;
+}
+
+.input-actions button, .send-btn {
+  color: var(--text-secondary);
+  padding: 8px;
+  border-radius: 50%;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-actions button:hover, .send-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-wrapper {
+  flex: 1;
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.input-wrapper textarea {
+  width: 100%;
+  resize: none;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  line-height: 1.4;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.input-wrapper textarea::placeholder {
+  color: var(--text-placeholder);
+}
+
+@media (max-width: 768px) {
+  .message-input-container {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .input-actions {
+    width: 100%;
+    justify-content: space-between;
+    order: -1;
+    padding-bottom: 2px;
+  }
+
+  .input-wrapper {
+    flex: 1 1 70%;
+  }
+
+  .send-btn {
+    align-self: flex-end;
+  }
+}

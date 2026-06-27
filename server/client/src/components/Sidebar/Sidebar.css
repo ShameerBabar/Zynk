@@ -1,0 +1,115 @@
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  height: var(--header-height);
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-sidebar);
+}
+
+.user-avatar-mini {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg-active);
+}
+
+.user-avatar-mini img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidebar-actions button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.icon-label {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.sidebar-actions button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.search-container {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+}
+
+.search-input-wrapper {
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  height: 36px;
+  transition: all var(--transition-normal);
+  border: 1px solid transparent;
+}
+
+.search-input-wrapper:focus-within {
+  background: var(--bg-sidebar);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.2);
+}
+
+.search-input-wrapper svg {
+  color: var(--text-secondary);
+  margin-right: 12px;
+  transition: color var(--transition-fast);
+}
+
+.search-input-wrapper:focus-within svg {
+  color: var(--accent-primary);
+}
+
+.search-input-wrapper input {
+  flex: 1;
+  height: 100%;
+  font-size: var(--fs-sm);
+}
+
+.sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+}

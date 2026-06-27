@@ -25,6 +25,9 @@ export const APP_NAME = 'Zynk';
 export const getFileUrl = (path) => {
   if (!path) return null;
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
-  return `${SOCKET_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+  if (path.startsWith('/uploads')) {
+    return `${SOCKET_URL}${path}`;
+  }
+  return path;
 };
 

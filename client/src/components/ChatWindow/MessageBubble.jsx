@@ -130,7 +130,7 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe,
         
         <div className="message-content">
           {isDeleted ? (
-            <span style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+            <span style={{ fontStyle: 'italic', opacity: 0.75, display: 'flex', alignItems: 'center' }}>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{ verticalAlign: 'middle', marginRight: '4px' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.14 12.73l-1.41 1.41L12 13.41l-2.73 2.73-1.41-1.41L10.59 12 7.86 9.27l1.41-1.41L12 10.59l2.73-2.73 1.41 1.41L13.41 12l2.73 2.73z"></path></svg>
               This message was deleted
             </span>
@@ -235,8 +235,8 @@ export default function MessageBubble({ message, isGroup, isSelf, onDeleteForMe,
         <div className="message-meta">
           <span className="message-time">{formatMessageTime(message.created_at)}</span>
           {isMine && !isDeleted && (
-            <span className={`message-status ${message.status === 'read' ? 'read' : ''}`}>
-              {message.status === 'read' || message.status === 'delivered' ? (
+            <span className={`message-status ${message.status === 'read' || isSelf ? 'read' : ''}`}>
+              {message.status === 'read' || message.status === 'delivered' || isSelf ? (
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                   <path d="M0.5 12l1.5-1.5L7 15 19.5 2.5l1.5 1.5L7 18z" />
                   <path d="M5.5 12l1.5-1.5L12 15 24.5 2.5l1.5 1.5L12 18z" />

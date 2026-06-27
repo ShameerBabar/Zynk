@@ -113,6 +113,17 @@ function initializeDatabase(db) {
       // Ignore if column already exists
     }
 
+    try {
+      db.exec('ALTER TABLE conversation_members ADD COLUMN is_pinned INTEGER DEFAULT 0');
+    } catch (e) {
+      // Ignore if column already exists
+    }
+
+    try {
+      db.exec('ALTER TABLE conversation_members ADD COLUMN pinned_color TEXT');
+    } catch (e) {
+      // Ignore if column already exists
+    }
     // ── Messages ─────────────────────────────────────────────────────────
     db.exec(`
       CREATE TABLE IF NOT EXISTS messages (

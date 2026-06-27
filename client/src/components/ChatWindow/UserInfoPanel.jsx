@@ -9,6 +9,7 @@ import { formatLastSeen } from '../../utils/formatTime';
 export default function UserInfoPanel({
   conversation,
   otherUser,
+  isSelf,
   onClose,
   onMuteChange,
   onBlockChange,
@@ -276,32 +277,34 @@ export default function UserInfoPanel({
             </div>
 
             {/* Block section */}
-            <div style={{ padding: '16px 20px' }}>
-              <button
-                onClick={handleBlockToggle}
-                disabled={blockLoading}
-                style={{
-                  width: '100%', padding: '12px 16px',
-                  background: isBlocked ? 'rgba(239, 68, 68, 0.08)' : 'transparent',
-                  color: '#ef4444',
-                  border: `1px solid ${isBlocked ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.2)'}`,
-                  borderRadius: '10px', cursor: blockLoading ? 'not-allowed' : 'pointer',
-                  fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', gap: '8px', transition: 'all 0.2s',
-                  opacity: blockLoading ? 0.6 : 1
-                }}
-              >
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.68L5.68 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.68L18.32 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/>
-                </svg>
-                {blockLoading ? 'Loading...' : isBlocked ? `Unblock ${displayName}` : `Block ${displayName}`}
-              </button>
-              {isBlocked && (
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '8px', margin: '8px 0 0 0' }}>
-                  You can't send or receive messages from this contact.
-                </p>
-              )}
-            </div>
+            {!isSelf && (
+              <div style={{ padding: '16px 20px' }}>
+                <button
+                  onClick={handleBlockToggle}
+                  disabled={blockLoading}
+                  style={{
+                    width: '100%', padding: '12px 16px',
+                    background: isBlocked ? 'rgba(239, 68, 68, 0.08)' : 'transparent',
+                    color: '#ef4444',
+                    border: `1px solid ${isBlocked ? 'rgba(239,68,68,0.4)' : 'rgba(239,68,68,0.2)'}`,
+                    borderRadius: '10px', cursor: blockLoading ? 'not-allowed' : 'pointer',
+                    fontWeight: 600, fontSize: '14px', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', gap: '8px', transition: 'all 0.2s',
+                    opacity: blockLoading ? 0.6 : 1
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.68L5.68 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.68L18.32 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/>
+                  </svg>
+                  {blockLoading ? 'Loading...' : isBlocked ? `Unblock ${displayName}` : `Block ${displayName}`}
+                </button>
+                {isBlocked && (
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '8px', margin: '8px 0 0 0' }}>
+                    You can't send or receive messages from this contact.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

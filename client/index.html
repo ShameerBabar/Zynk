@@ -8,6 +8,12 @@
       window.addEventListener('error', function(e) {
         var errorMsg = e.message || '';
         var isScriptError = e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK');
+        
+        // Ignore external scripts like Google Sign-in failing to load
+        if (isScriptError && e.target.src && e.target.src.includes('google.com')) {
+          return;
+        }
+
         var isUnexpectedToken = errorMsg.indexOf('Unexpected token') !== -1 || errorMsg.indexOf('SyntaxError') !== -1;
         
         if (isScriptError || isUnexpectedToken) {

@@ -68,7 +68,9 @@ export default function ThemeRenderer({ theme, intensity = 0.5, enabled = true }
 
       switch (type) {
         case 'rain':
-          p.speedY = Math.random() * 10 + 10;
+          // Scale speed based on screen height for mobile consistency, and factor in intensity
+          const baseSpeed = (h * 0.008) + 4;
+          p.speedY = Math.random() * (baseSpeed * 0.5) + baseSpeed + (intensity * 5);
           p.speedX = Math.random() * 2 - 1;
           p.size = Math.random() * 1.5 + 1;
           p.length = Math.random() * 20 + 10;
@@ -109,9 +111,10 @@ export default function ThemeRenderer({ theme, intensity = 0.5, enabled = true }
 
     let lastTime = 0;
     const render = (time) => {
-      ctx.clearRect(0, 0, width, height);
+      try {
+        ctx.clearRect(0, 0, width, height);
 
-      particlesRef.current.forEach((p) => {
+        particlesRef.current.forEach((p) => {
         switch (theme) {
           case 'rain':
             p.x += p.speedX;
@@ -192,6 +195,10 @@ export default function ThemeRenderer({ theme, intensity = 0.5, enabled = true }
       });
 
       animationRef.current = requestAnimationFrame(render);
+      } catch (err) {
+        console.error('Canvas animation error:', err);
+        animationRef.current = requestAnimationFrame(render);
+      }
     };
 
     animationRef.current = requestAnimationFrame(render);

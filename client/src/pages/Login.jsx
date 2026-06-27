@@ -40,7 +40,19 @@ export default function Login() {
     }
   };
 
+  const [isNative, setIsNative] = useState(false);
+
   useEffect(() => {
+    // Check if we are running in Capacitor Native environment
+    const isCapacitorNative = !!window.Capacitor?.isNativePlatform?.();
+    setIsNative(isCapacitorNative);
+
+    if (isCapacitorNative) {
+      // Don't initialize web Google Sign-In on Android
+      return;
+    }
+
+    let retryCount = 0;
     const initGoogle = () => {
       console.log("VITE_GOOGLE_CLIENT_ID from env:", import.meta.env.VITE_GOOGLE_CLIENT_ID);
       if (window.google?.accounts?.id) {
@@ -56,7 +68,12 @@ export default function Login() {
           { theme: "filled_blue", size: "large", width: "100%", text: "continue_with" }
         );
       } else {
-        setTimeout(initGoogle, 100);
+        retryCount++;
+        if (retryCount < 50) {
+          setTimeout(initGoogle, 100);
+        } else {
+          console.warn("Google Sign-In script failed to load after 5 seconds.");
+        }
       }
     };
     initGoogle();
@@ -101,7 +118,7 @@ export default function Login() {
               <path d="M12 2C6.48 2 2 6.03 2 11c0 2.84 1.5 5.37 3.82 7.03-.23 1.63-1.04 3.12-1.08 3.2-.08.17-.03.38.11.49.14.12.35.13.51.04 2.15-1.2 3.73-2.02 4.67-2.31C10.63 19.8 11.3 20 12 20c5.52 20 10-4.03 10-9s-4.48-9-10-9z"/>
             </svg>
           </div>
-          <h1>Welcome to Zynk</h1>
+          <h1>Welcome to Zynk App</h1>
           <p>Stay connected with your friends and family</p>
         </div>
 
@@ -109,7 +126,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label>Phone number or Username</label>
+            <label>Username</label>
             <div className="input-with-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -119,7 +136,7 @@ export default function Login() {
                 type="text" 
                 value={identifier} 
                 onChange={(e) => setIdentifier(e.target.value)} 
-                placeholder="Enter username or phone" 
+                placeholder="Enter username" 
               />
             </div>
           </div>
@@ -167,13 +184,17 @@ export default function Login() {
           </button>
         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: 'var(--text-secondary)' }}>
-          <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
-          <span style={{ padding: '0 10px', fontSize: '13px' }}>or</span>
-          <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
-        </div>
+        {!isNative && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', color: 'var(--text-secondary)' }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
+              <span style={{ padding: '0 10px', fontSize: '13px' }}>or</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
+            </div>
 
-        <div ref={googleBtnRef} style={{ width: '100%', display: 'flex', justifyContent: 'center', marginBottom: '20px' }}></div>
+            <div ref={googleBtnRef} style={{ width: '100%', display: 'flex', justifyContent: 'center', marginBottom: '20px' }}></div>
+          </>
+        )}
 
         <div className="auth-footer">
           Don't have an account? <Link to="/register">Register here</Link>

@@ -37,7 +37,7 @@ router.get('/conversations', (req, res) => {
 
     // Get all conversations the user is a member of
     const conversations = db.prepare(`
-      SELECT c.id, c.type, c.name, c.avatar_url, c.created_by, c.created_at, cm.is_muted, cm.theme, cm.wallpaper
+      SELECT c.id, c.type, c.name, c.avatar_url, c.created_by, c.created_at, cm.is_muted, cm.theme, cm.wallpaper, cm.is_pinned, cm.pinned_color
       FROM conversations c
       JOIN conversation_members cm ON cm.conversation_id = c.id
       WHERE cm.user_id = ?
@@ -562,6 +562,39 @@ router.post('/delivered-silent', (req, res) => {
   } catch (err) {
     console.error('[MESSAGES] delivered-silent error:', err.message);
     return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PUT /conversations/:id/pin
+ * Updates the pinned status and color for the current user in this conversation.
+ */
+router.put('/conversations/:id/pin', (req, res) => {
+  try {
+    const db = req.app.get('db');
+    const { is_pinned, pinned_color } = req.body;
+    const conversationId = req.params.id;
+    const userId = req.user.id;
+
+    // Check if user is a member
+    const isMember = db.prepare(`
+      SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ?
+    `).get(conversationId, userId);
+
+    if (!isMember) {
+      return res.status(403).json({ error: 'Not a member of this conversation' });
+    }
+
+    db.prepare(`
+      UPDATE conversation_members
+      SET is_pinned = ?, pinned_color = ?
+      WHERE conversation_id = ? AND user_id = ?
+    `).run(is_pinned ? 1 : 0, pinned_color || null, conversationId, userId);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error pinning conversation:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

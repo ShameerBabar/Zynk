@@ -126,6 +126,14 @@ body {
   color: var(--text-primary);
   font-size: var(--fs-base);
   -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none; /* Disable text selection */
+  user-select: none;
+  -webkit-touch-callout: none; /* Disable callout on long press on iOS */
+}
+
+input, textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
 }
 
 /* Custom Scrollbar */
@@ -393,3 +401,42 @@ input, textarea {
     display: flex !important;
   }
 }
+
+/* Custom App Colours */
+html[data-wallpaper='teal'] { 
+  --bg-app: #080f14; --bg-sidebar: #080f14; --bg-chat: #080f14;
+  --accent-primary: #14B8A6; --accent-primary-hover: #0D9488; --bg-msg-sent: #14B8A6; --bg-msg-sent-hover: #0D9488; --shadow-glow: 0 0 20px rgba(20, 184, 166, 0.25); --unread-badge: #14B8A6;
+}
+html[data-wallpaper='blue'] { 
+  --bg-app: #08111e; --bg-sidebar: #08111e; --bg-chat: #08111e;
+  --accent-primary: #3B82F6; --accent-primary-hover: #2563EB; --bg-msg-sent: #3B82F6; --bg-msg-sent-hover: #2563EB; --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.25); --unread-badge: #3B82F6;
+}
+html[data-wallpaper='midnight'] { 
+  --bg-app: #0a1024; --bg-sidebar: #0a1024; --bg-chat: linear-gradient(135deg, rgba(26,41,128,0.2) 0%, rgba(38,208,206,0.1) 100%);
+  --accent-primary: #26D0CE; --accent-primary-hover: #1c9e9b; --bg-msg-sent: linear-gradient(135deg, #1A2980 0%, #26D0CE 100%); --bg-msg-sent-hover: #1A2980; --shadow-glow: 0 0 20px rgba(38, 208, 206, 0.25); --unread-badge: #26D0CE;
+}
+html[data-wallpaper='sunset'] { 
+  --bg-app: #1f0b0f; --bg-sidebar: #1f0b0f; --bg-chat: linear-gradient(135deg, rgba(255,65,108,0.15) 0%, rgba(255,75,43,0.1) 100%);
+  --accent-primary: #FF4B2B; --accent-primary-hover: #cc3a20; --bg-msg-sent: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%); --bg-msg-sent-hover: #FF416C; --shadow-glow: 0 0 20px rgba(255, 75, 43, 0.25); --unread-badge: #FF4B2B;
+}
+html[data-wallpaper='aurora'] { 
+  --bg-app: #04121a; --bg-sidebar: #04121a; --bg-chat: linear-gradient(135deg, rgba(0,180,219,0.15) 0%, rgba(0,131,176,0.1) 100%);
+  --accent-primary: #00B4DB; --accent-primary-hover: #008eb0; --bg-msg-sent: linear-gradient(135deg, #00B4DB 0%, #0083B0 100%); --bg-msg-sent-hover: #0083B0; --shadow-glow: 0 0 20px rgba(0, 180, 219, 0.25); --unread-badge: #00B4DB;
+}
+html[data-wallpaper='lavender'] { 
+  --bg-app: #120c1c; --bg-sidebar: #120c1c; --bg-chat: linear-gradient(135deg, rgba(101,78,163,0.15) 0%, rgba(234,175,200,0.1) 100%);
+  --accent-primary: #a180e8; --accent-primary-hover: #8364c7; --bg-msg-sent: linear-gradient(135deg, #654ea3 0%, #eaafc8 100%); --bg-msg-sent-hover: #654ea3; --shadow-glow: 0 0 20px rgba(161, 128, 232, 0.25); --unread-badge: #a180e8;
+}
+html[data-wallpaper='obsidian'] { 
+  --bg-app: #070e12; --bg-sidebar: #070e12; --bg-chat: linear-gradient(135deg, rgba(15,32,39,0.5) 0%, rgba(32,58,67,0.5) 50%, rgba(44,83,100,0.5) 100%);
+  --accent-primary: #4b8ba6; --accent-primary-hover: #36677d; --bg-msg-sent: linear-gradient(135deg, #203a43 0%, #2c5364 100%); --bg-msg-sent-hover: #203a43; --shadow-glow: 0 0 20px rgba(75, 139, 166, 0.25); --unread-badge: #4b8ba6;
+}
+
+/* Light Theme App Colours */
+html[data-theme='light'][data-wallpaper='teal'] { --bg-app: #e6f3f0; --bg-sidebar: #e6f3f0; --bg-chat: #e6f3f0; }
+html[data-theme='light'][data-wallpaper='blue'] { --bg-app: #e6eef8; --bg-sidebar: #e6eef8; --bg-chat: #e6eef8; }
+html[data-theme='light'][data-wallpaper='midnight'] { --bg-app: #e8ecfa; --bg-sidebar: #e8ecfa; --bg-chat: linear-gradient(135deg, rgba(26,41,128,0.05) 0%, rgba(38,208,206,0.05) 100%); }
+html[data-theme='light'][data-wallpaper='sunset'] { --bg-app: #faecee; --bg-sidebar: #faecee; --bg-chat: linear-gradient(135deg, rgba(255,65,108,0.05) 0%, rgba(255,75,43,0.05) 100%); }
+html[data-theme='light'][data-wallpaper='aurora'] { --bg-app: #e6f7fa; --bg-sidebar: #e6f7fa; --bg-chat: linear-gradient(135deg, rgba(0,180,219,0.05) 0%, rgba(0,131,176,0.05) 100%); }
+html[data-theme='light'][data-wallpaper='lavender'] { --bg-app: #f2eefa; --bg-sidebar: #f2eefa; --bg-chat: linear-gradient(135deg, rgba(101,78,163,0.05) 0%, rgba(234,175,200,0.05) 100%); }
+html[data-theme='light'][data-wallpaper='obsidian'] { --bg-app: #e9eff2; --bg-sidebar: #e9eff2; --bg-chat: linear-gradient(135deg, rgba(15,32,39,0.05) 0%, rgba(44,83,100,0.05) 100%); }

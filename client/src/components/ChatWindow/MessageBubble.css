@@ -22,6 +22,8 @@
   display: flex;
   flex-direction: column;
   animation: slideUp var(--transition-fast);
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Modern chat bubbles have flat corners on the bottom edge matching the sender */

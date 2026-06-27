@@ -60,35 +60,9 @@
   backdrop-filter: blur(8px);
 }
 
-/* Custom Wallpapers */
-[data-wallpaper='teal'] .chat-window {
-  background: #080f14 !important;
-}
-[data-wallpaper='blue'] .chat-window {
-  background: #08111e !important;
-}
-[data-wallpaper='green'] .chat-window {
-  background: #08140e !important;
-}
-[data-wallpaper='charcoal'] .chat-window {
-  background: #121212 !important;
-}
+/* Custom Wallpapers handled globally in index.css */
 
-/* Light Theme Wallpapers */
-[data-theme='light'][data-wallpaper='teal'] .chat-window {
-  background: #e6f3f0 !important;
-}
-[data-theme='light'][data-wallpaper='blue'] .chat-window {
-  background: #e6eef8 !important;
-}
-[data-theme='light'][data-wallpaper='green'] .chat-window {
-  background: #e6f3e9 !important;
-}
-[data-theme='light'][data-wallpaper='charcoal'] .chat-window {
-  background: #f0f0f0 !important;
-}
-
-[data-wallpaper='custom'] .chat-window::before {
+.chat-window[data-has-custom-wallpaper="true"]::before {
   display: none;
 }
 

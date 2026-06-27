@@ -46,10 +46,11 @@ function PollBubble({ poll, currentUserId, onVote }) {
     <div className="poll-bubble-container">
       <div className="poll-header">
         <div className="poll-icon">
-          <BarChart2 size={16} />
+          <BarChart2 size={14} />
         </div>
-        <h4 className="poll-question">{question}</h4>
+        <span className="poll-tag">POLL</span>
       </div>
+      <h4 className="poll-question">{question}</h4>
 
       <div className="poll-options">
         {options.map((option) => {
@@ -85,16 +86,27 @@ function PollBubble({ poll, currentUserId, onVote }) {
                   {hasVoted && <CheckCircle2 size={14} className="voted-icon" />}
                   {voteCount > 0 && poll.is_anonymous !== 1 && (
                     <div className="poll-option-avatars">
-                      {optionVotes.slice(0, 3).map((v) => (
-                        <img 
-                          key={v.user_id} 
-                          className="poll-avatar-img"
-                          src={v.avatar_url ? getFileUrl(v.avatar_url) : '/default-avatar.png'} 
-                          alt={v.display_name} 
-                          title={v.display_name}
-                        />
-                      ))}
-                      {voteCount > 3 && (
+                        {optionVotes.slice(0, 3).map((v) => (
+                          v.avatar_url ? (
+                            <img 
+                              key={v.user_id} 
+                              className="poll-avatar-img"
+                              src={getFileUrl(v.avatar_url)} 
+                              alt={v.display_name || v.username} 
+                              title={v.display_name || v.username}
+                            />
+                          ) : (
+                            <div 
+                              key={v.user_id}
+                              className="poll-avatar-img"
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}
+                              title={v.display_name || v.username}
+                            >
+                              {(v.display_name || v.username || '?')[0].toUpperCase()}
+                            </div>
+                          )
+                        ))}
+                        {voteCount > 3 && (
                         <div className="poll-avatar-more">+{voteCount - 3}</div>
                       )}
                     </div>
