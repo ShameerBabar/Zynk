@@ -65,15 +65,13 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   };
   const messagesEndRef = useRef(null);
 
-  const [initialUnreadCount, setInitialUnreadCount] = useState(0);
+  const [initialUnreadCount, setInitialUnreadCount] = useState(() => {
+    return conversation.unread_count || conversation.unreadCount || 0;
+  });
 
   useEffect(() => {
     const count = conversation.unread_count || conversation.unreadCount || 0;
-    if (count >= 10) {
-      setInitialUnreadCount(count);
-    } else {
-      setInitialUnreadCount(0);
-    }
+    setInitialUnreadCount(count);
   }, [conversation.id]);
 
   useEffect(() => {
@@ -431,7 +429,7 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
 
       <div className="messages-area" style={{ position: 'relative' }}>
         <AnimatePresence>
-          {initialUnreadCount >= 10 && (
+          {initialUnreadCount >= 3 && (
             <ChatSummaryBanner 
               conversationId={conversation.id} 
               unreadCount={initialUnreadCount} 
