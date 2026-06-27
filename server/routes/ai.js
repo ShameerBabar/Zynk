@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { GoogleGenAI } = require('@google/genai');
+const { authenticate } = require('../middleware/auth');
 
 // POST /api/ai/summarize
-router.post('/summarize', async (req, res) => {
+router.post('/summarize', authenticate, async (req, res) => {
   const { conversationId, limit = 100 } = req.body;
   const userId = req.user.id;
   
