@@ -295,8 +295,10 @@ function setupSocketHandlers(io, db, sendPushToUser) {
 
     // ── WebRTC Calling Events ────────────────────────────────────────────
     socket.on('call_user', ({ targetUserId, signalData, type }) => {
-      const callerName = socket.user.display_name || socket.user.username;
-      const callerAvatar = socket.user.avatar_url;
+      // Fetch latest user details from DB to ensure display_name and avatar_url are correct
+      const dbUser = db.prepare('SELECT display_name, username, avatar_url FROM users WHERE id = ?').get(userId);
+      const callerName = dbUser ? (dbUser.display_name || dbUser.username) : socket.user.username;
+      const callerAvatar = dbUser ? dbUser.avatar_url : null;
 
       io.to(targetUserId).emit('incoming_call', {
         from: userId,
