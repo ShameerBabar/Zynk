@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useMessages } from '../../hooks/useMessages';
 import { useSocketContext } from '../../context/SocketContext';
 import { getFileUrl } from '../../utils/constants';
