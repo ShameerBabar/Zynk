@@ -94,8 +94,10 @@ export default function CameraCaptureModal({ onClose, onCapture }) {
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
 
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
+    if (facingMode === 'user') {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Flash effect
