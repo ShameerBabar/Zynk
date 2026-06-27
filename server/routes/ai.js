@@ -18,7 +18,7 @@ router.post('/summarize', authenticate, async (req, res) => {
   }
 
   try {
-    const db = req.app.locals.db;
+    const db = req.app.get('db');
 
     // Verify user is part of the conversation
     const isMember = db.prepare(
