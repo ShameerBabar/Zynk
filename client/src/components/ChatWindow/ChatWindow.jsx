@@ -430,7 +430,7 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
 
       <div className="messages-area" style={{ position: 'relative' }}>
         <AnimatePresence>
-          {initialUnreadCount >= 3 && (
+          {initialUnreadCount >= 10 && (
             <ChatSummaryBanner 
               conversationId={conversation.id} 
               unreadCount={initialUnreadCount} 
