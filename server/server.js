@@ -62,6 +62,10 @@ function processPushQueue(db) {
 
     tokens.forEach(row => {
       admin.messaging().send({
+        notification: {
+          title: payload.title || 'Zynk',
+          body: payload.body || ''
+        },
         data: {
           title: payload.title || 'Zynk',
           body: payload.body || '',
