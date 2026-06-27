@@ -16,6 +16,7 @@ import './ChatWindow.css';
 import ThemeRenderer from './ThemeRenderer';
 import ChatThemeModal from './ChatThemeModal';
 import ChatWallpaperModal from './ChatWallpaperModal';
+import ChatSummaryBanner from './ChatSummaryBanner';
 
 export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall, onThemeChange, onWallpaperChange, onForward }) {
   const targetMessageId = conversation.targetMessageId;
@@ -63,6 +64,17 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
     });
   };
   const messagesEndRef = useRef(null);
+
+  const [initialUnreadCount, setInitialUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const count = conversation.unread_count || conversation.unreadCount || 0;
+    if (count >= 10) {
+      setInitialUnreadCount(count);
+    } else {
+      setInitialUnreadCount(0);
+    }
+  }, [conversation.id]);
 
   useEffect(() => {
     if (setActiveConversationId) {
@@ -418,6 +430,16 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
       />
 
       <div className="messages-area" style={{ position: 'relative' }}>
+        <AnimatePresence>
+          {initialUnreadCount >= 10 && (
+            <ChatSummaryBanner 
+              conversationId={conversation.id} 
+              unreadCount={initialUnreadCount} 
+              onDismiss={() => setInitialUnreadCount(0)} 
+            />
+          )}
+        </AnimatePresence>
+        
         {loading && <div className="flex-center" style={{ padding: '20px', zIndex: 1 }}><div className="spinner"></div></div>}
         
         {(() => {

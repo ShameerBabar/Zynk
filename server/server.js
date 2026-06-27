@@ -255,6 +255,7 @@ const friendsRoutes = require('./routes/friends');
 const pollsRoutes = require('./routes/polls');
 const searchRouter = require('./routes/search');
 const eventsRouter = require('./routes/events');
+const aiRoutes = require('./routes/ai');
 
 // Public route for invite links
 app.get('/api/public/user/:username', (req, res) => {
@@ -294,6 +295,8 @@ app.use('/api/friends', friendsRoutes);
 app.use('/api/polls', pollsRoutes);
 app.use('/api/search', searchRouter);
 app.use('/api/events', eventsRouter);
+const { verifyToken } = require('./routes/auth');
+app.use('/api/ai', verifyToken, aiRoutes);
 
 // Setup Socket.io (pass sendPushToUser so the handler can push when user is offline)
 setupSocketHandlers(io, db, sendPushToUser);
