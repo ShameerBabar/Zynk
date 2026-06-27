@@ -66,6 +66,15 @@ function processPushQueue(db) {
           title: payload.title || 'Zynk',
           body: payload.body || ''
         },
+        android: {
+          priority: 'high',
+          notification: { sound: 'default' }
+        },
+        apns: {
+          payload: {
+            aps: { sound: 'default', 'content-available': 1 }
+          }
+        },
         data: {
           title: payload.title || 'Zynk',
           body: payload.body || '',
