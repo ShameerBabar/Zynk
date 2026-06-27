@@ -18,11 +18,12 @@ import ThemeRenderer from './ThemeRenderer';
 import ChatThemeModal from './ChatThemeModal';
 import ChatWallpaperModal from './ChatWallpaperModal';
 import ChatSummaryBanner from './ChatSummaryBanner';
+import TypingIndicator from './TypingIndicator';
 
 export default function ChatWindow({ conversation, onClose, onStartCall, onStartGroupCall, onThemeChange, onWallpaperChange, onForward }) {
   const targetMessageId = conversation.targetMessageId;
   const { messages, loading, hasMore, loadMore, addMessage, removeMessage, updateMessage, updatePoll, markMessagesRead, markMessagesDelivered } = useMessages(conversation.id, targetMessageId);
-  const { socket, setActiveConversationId } = useSocketContext();
+  const { socket, setActiveConversationId, typingUsers } = useSocketContext();
   const { wallpaper } = useTheme();
 
   const [deletedForMeIds, setDeletedForMeIds] = useState(() => {
@@ -148,6 +149,22 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
   const activeUser = isSelf ? currentUser : otherUser;
   const name = isPrivate ? (isSelf ? 'You (Message yourself)' : activeUser?.display_name || activeUser?.username) : conversation.name;
   const avatar = getFileUrl(isPrivate ? activeUser?.avatar_url : conversation.avatar_url);
+
+  // Compute typing names
+  const typingUserIds = typingUsers?.get(conversation.id) || new Set();
+  const activeTypingUserIds = Array.from(typingUserIds).filter(id => id !== currentUser?.id);
+  
+  let typingNames = [];
+  if (activeTypingUserIds.length > 0) {
+    if (isPrivate) {
+      typingNames = [activeUser?.display_name || activeUser?.username || 'User'];
+    } else {
+      typingNames = activeTypingUserIds.map(id => {
+        const member = groupMembers.find(m => m.id === id);
+        return member?.display_name || member?.username || 'Someone';
+      });
+    }
+  }
   
   const isOnline = useOnlineStatus(isPrivate && !isSelf ? activeUser?.id : null);
 
@@ -481,7 +498,16 @@ export default function ChatWindow({ conversation, onClose, onStartCall, onStart
         <div ref={messagesEndRef} />
       </div>
       
-      <MessageInput conversationId={conversation.id} isBlocked={isBlocked} />
+      <div style={{ position: 'relative', width: '100%', display: 'flex', flexDirection: 'column' }}>
+        <AnimatePresence>
+          {typingNames.length > 0 && (
+            <div style={{ position: 'absolute', bottom: '100%', width: '100%', display: 'flex', justifyContent: 'flex-start', paddingBottom: '4px', zIndex: 10 }}>
+              <TypingIndicator names={typingNames} />
+            </div>
+          )}
+        </AnimatePresence>
+        <MessageInput conversationId={conversation.id} isBlocked={isBlocked} />
+      </div>
 
       {showGroupInfo && (
         <GroupInfoPanel
