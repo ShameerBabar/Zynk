@@ -44,14 +44,18 @@ router.get('/conversations', (req, res) => {
     `).all(userId);
 
     const result = conversations.map((conv) => {
+      // Get other members count for optimized status check
+      const otherMembersCount = db.prepare('SELECT COUNT(*) AS count FROM conversation_members WHERE conversation_id = ? AND user_id != ?').get(conv.id, userId).count;
+
       // Get the last message in this conversation
       const lastMessage = db.prepare(`
         SELECT m.id, m.sender_id, m.content, m.type, m.file_name, m.is_deleted, m.created_at,
                u.username AS sender_username, u.display_name AS sender_display_name,
                CASE
-                 WHEN (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) = 0 THEN 'read'
-                 WHEN (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id AND user_id != m.sender_id) >= (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) THEN 'read'
-                 WHEN (SELECT COUNT(*) FROM message_deliveries WHERE message_id = m.id AND user_id != m.sender_id) >= (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) THEN 'delivered'
+                 WHEN m.sender_id != ? THEN 'received'
+                 WHEN ? = 0 THEN 'read'
+                 WHEN (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id AND user_id != m.sender_id) >= ? THEN 'read'
+                 WHEN (SELECT COUNT(*) FROM message_deliveries WHERE message_id = m.id AND user_id != m.sender_id) >= ? THEN 'delivered'
                  ELSE 'sent'
                END AS status
         FROM messages m
@@ -59,7 +63,7 @@ router.get('/conversations', (req, res) => {
         WHERE m.conversation_id = ?
         ORDER BY m.created_at DESC
         LIMIT 1
-      `).get(conv.id);
+      `).get(userId, otherMembersCount, otherMembersCount, otherMembersCount, conv.id);
 
       // Count unread messages (messages not read by this user, excluding own)
       const unreadCount = db.prepare(`
@@ -68,8 +72,8 @@ router.get('/conversations', (req, res) => {
         WHERE m.conversation_id = ?
           AND m.sender_id != ?
           AND m.is_deleted = 0
-          AND m.id NOT IN (
-            SELECT mr.message_id FROM message_reads mr WHERE mr.user_id = ?
+          AND NOT EXISTS (
+            SELECT 1 FROM message_reads mr WHERE mr.message_id = m.id AND mr.user_id = ?
           )
       `).get(conv.id, userId, userId);
 
@@ -302,6 +306,9 @@ router.get('/:conversationId', (req, res) => {
       return res.status(403).json({ error: 'You are not a member of this conversation.' });
     }
 
+    // Get other members count for optimized status check
+    const otherMembersCount = db.prepare('SELECT COUNT(*) AS count FROM conversation_members WHERE conversation_id = ? AND user_id != ?').get(conversationId, req.user.id).count;
+
     // Fetch messages with sender info, newest first
     const messages = db.prepare(`
       SELECT m.id, m.conversation_id, m.sender_id, m.content, m.type,
@@ -309,9 +316,10 @@ router.get('/:conversationId', (req, res) => {
              u.username AS sender_username, u.display_name AS sender_display_name,
              u.avatar_url AS sender_avatar,
              CASE
-               WHEN (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) = 0 THEN 'read'
-               WHEN (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id AND user_id != m.sender_id) >= (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) THEN 'read'
-               WHEN (SELECT COUNT(*) FROM message_deliveries WHERE message_id = m.id AND user_id != m.sender_id) >= (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = m.conversation_id AND user_id != m.sender_id) THEN 'delivered'
+               WHEN m.sender_id != ? THEN 'received'
+               WHEN ? = 0 THEN 'read'
+               WHEN (SELECT COUNT(*) FROM message_reads WHERE message_id = m.id AND user_id != m.sender_id) >= ? THEN 'read'
+               WHEN (SELECT COUNT(*) FROM message_deliveries WHERE message_id = m.id AND user_id != m.sender_id) >= ? THEN 'delivered'
                ELSE 'sent'
              END AS status
       FROM messages m
@@ -319,7 +327,7 @@ router.get('/:conversationId', (req, res) => {
       WHERE m.conversation_id = ?
       ORDER BY m.created_at DESC
       LIMIT ? OFFSET ?
-    `).all(conversationId, limit, offset);
+    `).all(req.user.id, otherMembersCount, otherMembersCount, otherMembersCount, conversationId, limit, offset);
 
     // Format messages to nest sender info
     const formattedMessages = messages.map(m => ({
