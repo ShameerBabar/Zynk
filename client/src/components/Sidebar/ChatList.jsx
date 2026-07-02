@@ -26,7 +26,23 @@ export default function ChatList({ conversations, selectedId, onSelect, onConver
     };
   }, []);
 
-  if (!conversations || conversations.length === 0) {
+  if (conversations === null) {
+    return (
+      <div style={{ padding: '10px' }}>
+        {[1, 2, 3, 4, 5, 6].map(i => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '12px', gap: '12px', opacity: 1 - (i * 0.1) }}>
+            <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0 }}></div>
+            <div style={{ flex: 1 }}>
+              <div className="skeleton" style={{ width: '40%', height: '14px', marginBottom: '8px', borderRadius: '4px' }}></div>
+              <div className="skeleton" style={{ width: '70%', height: '12px', borderRadius: '4px' }}></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (conversations.length === 0) {
     return (
       <EmptyState 
         icon={MessageSquarePlus}

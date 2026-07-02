@@ -15,7 +15,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "453406012303-24ik5eoo8v774t003g875l8d6qc8h63j.apps.googleusercontent.com",
+          "client_id": "453406012303-t606epgc5e4rbnpf0ajeu4j5vm1c6he1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zynk.app",
+            "certificate_hash": "efe4fbb22d53cd49bfc44f54a5c081f686f25464"
+          }
+        },
+        {
+          "client_id": "453406012303-5l4g4f6a60vk6o9kkjdevnsong6nkpau.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -30,6 +38,57 @@
             {
               "client_id": "453406012303-24ik5eoo8v774t003g875l8d6qc8h63j.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "453406012303-nojb5851jkshcrdvj7bc6gf1fo4ckj04.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.zynk.app"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:453406012303:android:c12c4b20b1d8f51efa91fa",
+        "android_client_info": {
+          "package_name": "com.zynk.chat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "453406012303-joum6raebatke7sb0u1alounnare9trb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zynk.chat",
+            "certificate_hash": "0dc447892a30bd54672c9a1423df9d5b77ba7c1a"
+          }
+        },
+        {
+          "client_id": "453406012303-5l4g4f6a60vk6o9kkjdevnsong6nkpau.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmGce3alL4m0SgWpagLLYtSq2DfoMj9Y4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "453406012303-24ik5eoo8v774t003g875l8d6qc8h63j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "453406012303-nojb5851jkshcrdvj7bc6gf1fo4ckj04.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.zynk.app"
+              }
             }
           ]
         }

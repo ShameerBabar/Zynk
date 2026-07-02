@@ -1,6 +1,6 @@
 .sidebar {
   width: var(--sidebar-width);
-  height: 100vh;
+  height: 100%;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -113,6 +113,7 @@
 .sidebar-list {
   flex: 1;
   overflow-y: auto;
+  padding-bottom: 40px;
 }
 
 /* Pinned Chat Styles */

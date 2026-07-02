@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSocketContext } from '../../context/SocketContext';
 import { getFileUrl } from '../../utils/constants';
 import { showToast } from '../Common/Toast';
+import { Haptics } from '@capacitor/haptics';
 
 // ── ICE servers: STUN + free TURN relays ─────────────────────────────────────
 const ICE_SERVERS = [
@@ -39,6 +40,7 @@ function createRingtone() {
       if (stopped) return;
       beep(480, 0, 0.4);
       beep(420, 0.45, 0.4);
+      Haptics.vibrate({ duration: 800 }).catch(() => {});
       timeout = setTimeout(playSequence, 3000);
     };
 
@@ -56,9 +58,9 @@ function createRingtone() {
   }
 }
 
-const CALL_TIMEOUT_SECONDS = 60;
+const CALL_TIMEOUT_SECONDS = 90;
 
-export default function CallModal({ callData, onCallEnd }) {
+export default function CallModal({ callData, onCallEnd, onMinimize }) {
   const { user: currentUser } = useAuth();
   const { socket } = useSocketContext();
 
@@ -83,6 +85,7 @@ export default function CallModal({ callData, onCallEnd }) {
   const ringtoneRef = useRef(null);
   const timeoutIntervalRef = useRef(null);
   const hasStartedRef = useRef(false);
+  const lastOfferRef = useRef(null);
 
   // Get other user's info
   const otherUserName = callData.otherUser?.display_name || callData.otherUser?.username || 'Zynk User';
@@ -231,6 +234,7 @@ export default function CallModal({ callData, onCallEnd }) {
         offerToReceiveVideo: callData.type === 'video',
       });
       await pc.setLocalDescription(offer);
+      lastOfferRef.current = offer;
 
       socket.emit('call_user', {
         targetUserId: callData.otherUser.id,
@@ -346,6 +350,30 @@ export default function CallModal({ callData, onCallEnd }) {
       onCallEnd();
     };
 
+    const onCallOfferRequested = async () => {
+      if (callState === 'ringing' && peerConnectionRef.current) {
+        try {
+          const pc = peerConnectionRef.current;
+          // Generate a fresh offer (ICE restart) so WebRTC doesn't complain about reuse
+          const offer = await pc.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: callData.type === 'video',
+            iceRestart: true
+          });
+          await pc.setLocalDescription(offer);
+          lastOfferRef.current = offer;
+          
+          socket.emit('call_user', {
+            targetUserId: callData.otherUser.id,
+            type: callData.type,
+            signalData: offer
+          });
+        } catch (err) {
+          console.error('Failed to generate fresh offer:', err);
+        }
+      }
+    };
+
     const onIceCandidate = async ({ candidate }) => {
       try {
         const pc = peerConnectionRef.current;
@@ -364,6 +392,7 @@ export default function CallModal({ callData, onCallEnd }) {
     socket.on('call_rejected', onCallRejected);
     socket.on('call_ended', onCallEnded);
     socket.on('ice_candidate', onIceCandidate);
+    socket.on('call_offer_requested', onCallOfferRequested);
 
     // Run Caller Setup if not incoming
     if (!callData.incoming) {
@@ -371,14 +400,14 @@ export default function CallModal({ callData, onCallEnd }) {
     }
 
     return () => {
-      // Remove only our specific handlers — won't nuke other components' listeners
       socket.off('call_accepted', onCallAccepted);
       socket.off('call_rejected', onCallRejected);
       socket.off('call_ended', onCallEnded);
       socket.off('ice_candidate', onIceCandidate);
+      socket.off('call_offer_requested', onCallOfferRequested);
       cleanup();
     };
-  }, [socket]);
+  }, [socket, callState, callData.otherUser?.id, callData.type]);
 
   // Call duration timer
   useEffect(() => {
@@ -440,6 +469,27 @@ export default function CallModal({ callData, onCallEnd }) {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       backdropFilter: 'blur(10px)', color: 'var(--text-primary)', fontFamily: 'var(--font-family)'
     }}>
+
+      {/* Minimize Button */}
+      {onMinimize && (
+        <button
+          onClick={onMinimize}
+          style={{
+            position: 'absolute', top: '24px', left: '24px',
+            background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%',
+            width: '44px', height: '44px', color: 'white',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10000
+          }}
+          title="Minimize call"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="4 14 10 14 10 20"></polyline>
+            <polyline points="20 10 14 10 14 4"></polyline>
+            <line x1="14" y1="10" x2="21" y2="3"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+        </button>
+      )}
 
       {/* ── Always-mounted media elements (hidden when not connected) ── */}
       {/* Remote video — always in DOM so ref is always available */}
@@ -542,9 +592,6 @@ export default function CallModal({ callData, onCallEnd }) {
             <h2 style={{ fontSize: '24px', fontWeight: 600 }}>{otherUserName}</h2>
             <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '15px' }}>
               {callData.type === 'video' ? '🎥 Video' : '🎙️ Voice'} Calling...
-            </p>
-            <p style={{ color: 'rgba(255,255,255,0.35)', marginTop: '6px', fontSize: '13px' }}>
-              Auto-cancels in {timeoutCountdown}s
             </p>
           </div>
 

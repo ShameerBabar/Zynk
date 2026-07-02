@@ -19,7 +19,7 @@ import { ErrorBoundary } from '../components/Common/ErrorBoundary';
 export default function Chat() {
   const { socket } = useSocketContext();
   const { user: currentUser } = useAuth();
-  const [conversations, setConversations] = useState([]);
+  const [conversations, setConversations] = useState(null);
   const [selectedConversation, setSelectedConversation] = useState(() => {
     try {
       const saved = sessionStorage.getItem('zynk_active_chat');
@@ -279,7 +279,7 @@ export default function Chat() {
   };
 
   const startPrivateChat = async (user) => {
-    const existing = conversations.find(c => {
+    const existing = (conversations || []).find(c => {
       const otherUser = c.other_user || c.otherUser;
       return c.type === 'private' && otherUser?.id === user.id;
     });
@@ -292,8 +292,9 @@ export default function Chat() {
         const data = await post(`/messages/conversations/private/${user.id}`);
         const newConv = data.conversation;
         setConversations(prev => {
-          if (prev.some(c => c.id === newConv.id)) return prev;
-          return [newConv, ...prev];
+          const arr = prev || [];
+          if (arr.some(c => c.id === newConv.id)) return arr;
+          return [newConv, ...arr];
         });
         setSelectedConversation(newConv);
         setShowFriendsPanel(false);
@@ -307,10 +308,11 @@ export default function Chat() {
   // Called when a conversation object is passed directly (e.g. from FriendsPanel accept)
   const handleOpenConversation = (conversation) => {
     setConversations(prev => {
-      if (prev.some(c => c.id === conversation.id)) {
-        return prev;
+      const arr = prev || [];
+      if (arr.some(c => c.id === conversation.id)) {
+        return arr;
       }
-      return [{ ...conversation, unreadCount: 0, unread_count: 0 }, ...prev];
+      return [{ ...conversation, unreadCount: 0, unread_count: 0 }, ...arr];
     });
     setSelectedConversation(conversation);
     setShowFriendsPanel(false);
@@ -320,7 +322,7 @@ export default function Chat() {
   const handleSelectConversation = (convOrId, targetMessageId = null) => {
     let conv = convOrId;
     if (typeof convOrId === 'string') {
-      conv = conversations.find(c => c.id === convOrId);
+      conv = (conversations || []).find(c => c.id === convOrId);
       if (!conv) {
         // If it's a completely unknown conversation (unlikely if they are a member), we'd need to fetch it.
         // For now, we assume it's in the list.

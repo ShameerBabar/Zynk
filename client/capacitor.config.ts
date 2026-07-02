@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.zynk.app',
+  appId: 'com.zynk.chat',
   appName: 'Zynk',
   webDir: 'dist',
   server: {
@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],
-      serverClientId: '1032338029517-57p2q55v3r3q8v4j3j1e1h8j5e1h8j5e.apps.googleusercontent.com',
+      serverClientId: '453406012303-24ik5eoo8v774t003g875l8d6qc8h63j.apps.googleusercontent.com',
       forceCodeForRefreshToken: true,
     }
   }

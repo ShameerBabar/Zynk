@@ -63,23 +63,12 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
   return (
     <AnimatePresence>
       <motion.div 
-        className="modal-overlay"
+        className="poll-modal-overlay"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={(e) => {
-          if (e.target.classList.contains('modal-overlay')) onClose();
-        }}
-        style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '40px 20px',
-          overflowY: 'auto'
+          if (e.target.classList.contains('poll-modal-overlay')) onClose();
         }}
       >
         <motion.div 
@@ -100,143 +89,132 @@ function CreatePollModal({ isOpen, onClose, onSubmit }) {
           </div>
 
           <form onSubmit={handleSubmit} className="poll-form">
-            <div className="poll-form-grid">
-              {/* LEFT COLUMN: Question and Options */}
-              <div className="poll-left-col">
-                <div className="form-group">
-                  <label>Question</label>
+            <div className="form-group">
+              <label>Question</label>
+              <input
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="Ask a question..."
+                className="form-input"
+                autoFocus
+              />
+            </div>
+
+            <div className="options-container">
+              <label>Options</label>
+              {options.map((option, index) => (
+                <motion.div 
+                  key={index} 
+                  className="poll-option-input"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                >
                   <input
                     type="text"
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Ask a question..."
+                    value={option}
+                    onChange={(e) => handleOptionChange(index, e.target.value)}
+                    placeholder={`Option ${index + 1}`}
                     className="form-input"
-                    autoFocus
                   />
-                </div>
-
-                <div className="options-container">
-                  <label>Options</label>
-                  {options.map((option, index) => (
-                    <motion.div 
-                      key={index} 
-                      className="poll-option-input"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
+                  {options.length > 2 && (
+                    <button 
+                      type="button" 
+                      className="remove-option-btn" 
+                      onClick={() => handleRemoveOption(index)}
+                      title="Remove option"
                     >
-                      <input
-                        type="text"
-                        value={option}
-                        onChange={(e) => handleOptionChange(index, e.target.value)}
-                        placeholder={`Option ${index + 1}`}
-                        className="form-input"
-                      />
-                      {options.length > 2 && (
-                        <button 
-                          type="button" 
-                          className="remove-option-btn" 
-                          onClick={() => handleRemoveOption(index)}
-                          title="Remove option"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                    </motion.div>
-                  ))}
-                  
-                  {options.length < 10 && (
-                    <button type="button" className="add-option-btn interactive" onClick={handleAddOption}>
-                      <Plus size={16} /> Add Option
+                      <Trash2 size={16} />
                     </button>
                   )}
+                </motion.div>
+              ))}
+              
+              {options.length < 10 && (
+                <button type="button" className="add-option-btn interactive" onClick={handleAddOption}>
+                  <Plus size={16} /> Add Option
+                </button>
+              )}
+            </div>
+
+            <div className="poll-settings">
+              <h4 className="settings-title"><Settings size={14} /> Settings</h4>
+              
+              <div className="setting-row">
+                <div className="setting-info">
+                  <span className="setting-label">Allow multiple answers</span>
+                  <span className="setting-desc">Voters can select more than 1 option</span>
                 </div>
+                <label className="toggle-switch">
+                  <input 
+                    type="checkbox" 
+                    checked={allowMultiple}
+                    onChange={(e) => setAllowMultiple(e.target.checked)} 
+                  />
+                  <span className="slider round"></span>
+                </label>
+              </div>
+              
+              <div className="setting-row">
+                <div className="setting-info">
+                  <span className="setting-label">Anonymous voting</span>
+                  <span className="setting-desc">Hide who voted</span>
+                </div>
+                <label className="toggle-switch">
+                  <input 
+                    type="checkbox" 
+                    checked={isAnonymous}
+                    onChange={(e) => setIsAnonymous(e.target.checked)} 
+                  />
+                  <span className="slider round"></span>
+                </label>
               </div>
 
-              {/* RIGHT COLUMN: Settings and Submit */}
-              <div className="poll-right-col">
-                <div className="poll-settings always-open">
-                  <h4 className="settings-title"><Settings size={16} /> Poll Settings</h4>
-                  
-                  <div className="setting-row">
-                    <div className="setting-info">
-                      <span className="setting-label">Allow multiple answers</span>
-                      <span className="setting-desc">Voters can select more than one option</span>
-                    </div>
-                    <label className="toggle-switch">
-                      <input 
-                        type="checkbox" 
-                        checked={allowMultiple}
-                        onChange={(e) => setAllowMultiple(e.target.checked)} 
-                      />
-                      <span className="slider round"></span>
-                    </label>
-                  </div>
-                  
-                  <div className="setting-row">
-                    <div className="setting-info">
-                      <span className="setting-label">Anonymous voting</span>
-                      <span className="setting-desc">Hide who voted for what</span>
-                    </div>
-                    <label className="toggle-switch">
-                      <input 
-                        type="checkbox" 
-                        checked={isAnonymous}
-                        onChange={(e) => setIsAnonymous(e.target.checked)} 
-                      />
-                      <span className="slider round"></span>
-                    </label>
-                  </div>
-
-                  <div className="setting-row">
-                    <div className="setting-info">
-                      <span className="setting-label">Allow changing vote</span>
-                      <span className="setting-desc">Voters can change their answer later</span>
-                    </div>
-                    <label className="toggle-switch">
-                      <input 
-                        type="checkbox" 
-                        checked={allowChange}
-                        onChange={(e) => setAllowChange(e.target.checked)} 
-                      />
-                      <span className="slider round"></span>
-                    </label>
-                  </div>
-                  
-                  <div className="setting-divider"></div>
-                  
-                  <div className="setting-row expiration-row">
-                    <div className="setting-info">
-                      <span className="setting-label" style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                        <Clock size={14} /> Poll Expiration
-                      </span>
-                      <span className="setting-desc">When should this poll end?</span>
-                    </div>
-                    <div className="expiration-pills">
-                      {[
-                        { label: 'Never', value: '0' },
-                        { label: '1H', value: '3600' },
-                        { label: '6H', value: '21600' },
-                        { label: '24H', value: '86400' },
-                        { label: '1W', value: '604800' }
-                      ].map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          className={`expiration-pill ${expiresIn === opt.value ? 'active' : ''}`}
-                          onClick={() => setExpiresIn(opt.value)}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+              <div className="setting-row">
+                <div className="setting-info">
+                  <span className="setting-label">Allow changing vote</span>
+                  <span className="setting-desc">Voters can edit their vote</span>
                 </div>
-
-                <div className="modal-footer">
-                  <button type="button" className="btn-secondary interactive" onClick={onClose}>Cancel</button>
-                  <button type="submit" className="btn-primary interactive" disabled={isSubmitDisabled}>Create Poll</button>
+                <label className="toggle-switch">
+                  <input 
+                    type="checkbox" 
+                    checked={allowChange}
+                    onChange={(e) => setAllowChange(e.target.checked)} 
+                  />
+                  <span className="slider round"></span>
+                </label>
+              </div>
+              
+              <div className="setting-row expiration-row">
+                <div className="setting-info">
+                  <span className="setting-label" style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                    <Clock size={14} /> Expiration
+                  </span>
+                </div>
+                <div className="expiration-pills">
+                  {[
+                    { label: 'Never', value: '0' },
+                    { label: '1H', value: '3600' },
+                    { label: '6H', value: '21600' },
+                    { label: '24H', value: '86400' },
+                    { label: '1W', value: '604800' }
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`expiration-pill ${expiresIn === opt.value ? 'active' : ''}`}
+                      onClick={() => setExpiresIn(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary interactive" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn-primary interactive" disabled={isSubmitDisabled}>Create</button>
             </div>
           </form>
         </motion.div>

@@ -9,6 +9,7 @@ import Register from './pages/Register';
 import Chat from './pages/Chat';
 import InvitePage from './pages/InvitePage';
 import { ToastContainer } from './components/Common/Toast';
+import GlobalCallManager from './components/ChatWindow/GlobalCallManager';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -49,6 +50,7 @@ const AppContent = () => {
             <ProtectedRoute>
               <SocketProvider>
                 <PageWrapper><Chat /></PageWrapper>
+                <GlobalCallManager />
               </SocketProvider>
             </ProtectedRoute>
           } />

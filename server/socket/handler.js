@@ -329,6 +329,10 @@ function setupSocketHandlers(io, db, sendPushToUser) {
       }
     });
 
+    socket.on('request_call_offer', ({ targetUserId }) => {
+      io.to(targetUserId).emit('call_offer_requested', { targetUserId: userId });
+    });
+
     socket.on('accept_call', ({ targetUserId, signalData }) => {
       io.to(targetUserId).emit('call_accepted', { signalData });
     });

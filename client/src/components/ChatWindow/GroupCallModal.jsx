@@ -82,7 +82,7 @@ function ParticipantTile({ userInfo, stream, callType, isLocal, isMuted, isVideo
 }
 
 // ── GroupCallModal ────────────────────────────────────────────────────────────
-export default function GroupCallModal({ groupId, groupName, callType, isInitiator, onEnd }) {
+export default function GroupCallModal({ groupId, groupName, callType, isInitiator, onEnd, onMinimize }) {
   const { user: currentUser } = useAuth();
   const { socket } = useSocketContext();
 
@@ -408,6 +408,26 @@ export default function GroupCallModal({ groupId, groupName, callType, isInitiat
               : `${allParticipants.length} participant${allParticipants.length !== 1 ? 's' : ''} · ${formatDuration(callDuration)}`}
           </div>
         </div>
+        
+        {/* Minimize Button */}
+        {onMinimize && (
+          <button
+            onClick={onMinimize}
+            style={{
+              background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%',
+              width: '36px', height: '36px', color: 'white',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+            }}
+            title="Minimize call"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="4 14 10 14 10 20"></polyline>
+              <polyline points="20 10 14 10 14 4"></polyline>
+              <line x1="14" y1="10" x2="21" y2="3"></line>
+              <line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Error state */}

@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Zynk</string>
     <string name="title_activity_main">Zynk</string>
-    <string name="package_name">com.zynk.app</string>
-    <string name="custom_url_scheme">com.zynk.app</string>
-    <string name="server_client_id">1032338029517-57p2q55v3r3q8v4j3j1e1h8j5e1h8j5e.apps.googleusercontent.com</string>
+    <string name="package_name">com.zynk.chat</string>
+    <string name="custom_url_scheme">com.zynk.chat</string>
+    <string name="server_client_id">453406012303-24ik5eoo8v774t003g875l8d6qc8h63j.apps.googleusercontent.com</string>
 </resources>

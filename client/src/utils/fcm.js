@@ -91,6 +91,9 @@ export async function registerFCM(authToken) {
       
       PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
         console.log('[FCM] Native Push Action performed:', action);
+        // Queue it globally in case Chat.jsx is not mounted yet to handle the tap
+        window.zynkPendingPushAction = action;
+        window.dispatchEvent(new CustomEvent('zynk:push-action', { detail: action }));
       });
 
       await PushNotifications.register();

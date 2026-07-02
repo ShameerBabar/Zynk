@@ -1,4 +1,4 @@
-package com.zynk.app;
+package com.zynk.chat;
 
 import com.getcapacitor.BridgeActivity;
 

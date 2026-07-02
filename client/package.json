@@ -12,7 +12,10 @@
     "open:android": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.4.1",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/local-notifications": "^8.2.0",
     "@capacitor/push-notifications": "^8.1.1",
     "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
     "@emoji-mart/data": "^1.1.2",
