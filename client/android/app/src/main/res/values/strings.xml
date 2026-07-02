@@ -4,4 +4,5 @@
     <string name="title_activity_main">Zynk</string>
     <string name="package_name">com.zynk.app</string>
     <string name="custom_url_scheme">com.zynk.app</string>
+    <string name="server_client_id">1032338029517-57p2q55v3r3q8v4j3j1e1h8j5e1h8j5e.apps.googleusercontent.com</string>
 </resources>
